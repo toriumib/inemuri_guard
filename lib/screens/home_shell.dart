@@ -94,6 +94,22 @@ class _HomeShellState extends State<HomeShell> {
                     mode: mode,
                     label: label,
                     value: value,
+                    primaryLabel: detector.state == DetectorState.starting
+                        ? '起動中…'
+                        : (detector.state == DetectorState.watching
+                              ? '停止'
+                              : '検知を開始'),
+                    primaryIsStop: detector.state == DetectorState.watching,
+                    onPrimary: detector.state == DetectorState.starting
+                        ? null
+                        : () async {
+                            if (detector.state == DetectorState.watching) {
+                              await detector.stop();
+                              if (!breathing.alarmFiring) await alarm.stop();
+                            } else {
+                              await detector.start();
+                            }
+                          },
                     onSnooze: anyAlarming
                         ? () {
                             alarm.stop();
@@ -205,7 +221,7 @@ class _HomeShellState extends State<HomeShell> {
       return (
         ratio > 0.5 ? StatusMode.warn : StatusMode.watching,
         '居眠り検知',
-        ratio > 0.5 ? '眠気の兆候あり' : '監視中',
+        ratio > 0.5 ? '眠気の兆候あり' : '検知開始中',
       );
     }
     return (StatusMode.idle, '現在のモード', '待機中');

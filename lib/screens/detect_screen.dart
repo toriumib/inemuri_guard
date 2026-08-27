@@ -105,20 +105,9 @@ class _DetectScreenState extends State<DetectScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _ChipThresholdPicker(
-                    title: '何秒目を閉じたら起こす？',
-                    options: const [10, 15, 20, 30],
-                    value: thresholdSeconds,
-                    suffix: '秒',
-                    color: c.accentAlert,
-                    onChanged: (v) {
-                      setState(() => thresholdSeconds = v);
-                      detector.setThresholdSeconds(v);
-                    },
-                  ),
-                  const Divider(height: 28),
-                  _ToneRow(alarm: alarm),
-                  const SizedBox(height: 18),
+                  // Start/stop sits directly under the preview, above the
+                  // settings — the action people came for shouldn't be
+                  // behind a scroll past options they rarely change.
                   Row(
                     children: [
                       Expanded(
@@ -168,6 +157,20 @@ class _DetectScreenState extends State<DetectScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 18),
+                  _ChipThresholdPicker(
+                    title: '何秒目を閉じたら起こす？',
+                    options: const [10, 15, 20, 30],
+                    value: thresholdSeconds,
+                    suffix: '秒',
+                    color: c.accentAlert,
+                    onChanged: (v) {
+                      setState(() => thresholdSeconds = v);
+                      detector.setThresholdSeconds(v);
+                    },
+                  ),
+                  const Divider(height: 28),
+                  _ToneRow(alarm: alarm),
                   if (detector.state == DetectorState.denied) ...[
                     const SizedBox(height: 12),
                     Text(
