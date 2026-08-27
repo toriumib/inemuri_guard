@@ -1,0 +1,110 @@
+import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
+import 'notification_service.dart';
+
+enum AlarmTone { chime, siren, bell }
+
+extension AlarmToneX on AlarmTone {
+  String get label => switch (this) {
+    AlarmTone.chime => 'チャイム',
+    AlarmTone.siren => 'サイレン',
+    AlarmTone.bell => 'ベル連打',
+  };
+
+  String get asset => switch (this) {
+    AlarmTone.chime => 'sfx/chime.wav',
+    AlarmTone.siren => 'sfx/siren.wav',
+    AlarmTone.bell => 'sfx/bell.wav',
+  };
+
+  Duration get gap => switch (this) {
+    AlarmTone.chime => const Duration(milliseconds: 900),
+    AlarmTone.siren => const Duration(milliseconds: 1150),
+    AlarmTone.bell => const Duration(milliseconds: 650),
+  };
+}
+
+/// Loops one of three synthesized alarm tones until [stop] is called, and
+/// fans the same alarm out to: the ALARM audio stream (routes to Bluetooth
+/// earbuds automatically, plays through Do Not Disturb/silent mode like a
+/// real alarm clock), the phone's vibration motor, and a notification that
+/// Wear OS mirrors to a paired watch (buzzing it too).
+class AlarmService extends ChangeNotifier {
+  final AudioPlayer _loopPlayer = AudioPlayer();
+  final AudioPlayer _previewPlayer = AudioPlayer();
+  final NotificationService notifications;
+  Timer? _repeatTimer;
+
+  AlarmService(this.notifications) {
+    final alarmContext = AudioContext(
+      android: AudioContextAndroid(
+        isSpeakerphoneOn: false,
+        stayAwake: true,
+        contentType: AndroidContentType.sonification,
+        usageType: AndroidUsageType.alarm,
+        audioFocus: AndroidAudioFocus.gainTransient,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.playback,
+        options: {
+          AVAudioSessionOptions.mixWithOthers,
+          AVAudioSessionOptions.duckOthers,
+        },
+      ),
+    );
+    _loopPlayer.setAudioContext(alarmContext);
+  }
+
+  AlarmTone tone = AlarmTone.chime;
+  bool get isFiring => _repeatTimer != null;
+
+  void setTone(AlarmTone t) {
+    tone = t;
+    notifyListeners();
+  }
+
+  Future<void> preview() async {
+    await _previewPlayer.stop();
+    await _previewPlayer.play(AssetSource(tone.asset));
+  }
+
+  Future<void> start({String reason = '居眠りの兆候を検知しました'}) async {
+    if (isFiring) return;
+    await _burst();
+    _repeatTimer = Timer.periodic(tone.gap, (_) => _burst());
+    _startVibration();
+    notifications.fireAlarm('起きてください', reason);
+    notifyListeners();
+  }
+
+  Future<void> stop() async {
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+    await _loopPlayer.stop();
+    Vibration.cancel();
+    notifications.cancelAlarm();
+    notifyListeners();
+  }
+
+  Future<void> _burst() async {
+    await _loopPlayer.stop();
+    await _loopPlayer.play(AssetSource(tone.asset));
+  }
+
+  Future<void> _startVibration() async {
+    final has = await Vibration.hasVibrator();
+    if (has != true) return;
+    // Long-short-short pattern, repeating from index 0 until cancelled.
+    Vibration.vibrate(pattern: const [0, 500, 200, 250, 200, 250], repeat: 0);
+  }
+
+  @override
+  void dispose() {
+    _repeatTimer?.cancel();
+    _loopPlayer.dispose();
+    _previewPlayer.dispose();
+    super.dispose();
+  }
+}
