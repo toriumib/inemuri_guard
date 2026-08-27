@@ -9,12 +9,22 @@ class StatusHero extends StatelessWidget {
   final String value;
   final VoidCallback? onSnooze;
 
+  /// Start/stop detection straight from the header. The same control also
+  /// lives inside the 検知 tab, but that one sits below the fold — and the
+  /// header is on every tab, so this is the one that's always reachable.
+  final String? primaryLabel;
+  final VoidCallback? onPrimary;
+  final bool primaryIsStop;
+
   const StatusHero({
     super.key,
     required this.mode,
     required this.label,
     required this.value,
     this.onSnooze,
+    this.primaryLabel,
+    this.onPrimary,
+    this.primaryIsStop = false,
   });
 
   @override
@@ -77,6 +87,8 @@ class StatusHero extends StatelessWidget {
                 ],
               ),
             ),
+            // While an alarm is going off, silencing it is the only thing
+            // anyone wants — the start/stop control steps aside for snooze.
             if (onSnooze != null)
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -84,7 +96,7 @@ class StatusHero extends StatelessWidget {
                   foregroundColor: c.accentAlertInk,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 8,
+                    vertical: 10,
                   ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -95,7 +107,51 @@ class StatusHero extends StatelessWidget {
                 ),
                 onPressed: onSnooze,
                 child: const Text('スヌーズ'),
-              ),
+              )
+            else if (primaryLabel != null)
+              primaryIsStop
+                  ? OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: c.text,
+                        side: BorderSide(color: c.border),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                      ),
+                      onPressed: onPrimary,
+                      child: Text(primaryLabel!),
+                    )
+                  : FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.accentAlert,
+                        foregroundColor: c.accentAlertInk,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                      ),
+                      onPressed: onPrimary,
+                      child: Text(primaryLabel!),
+                    ),
           ],
         ),
       ),
