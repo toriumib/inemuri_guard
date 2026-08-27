@@ -1,0 +1,213 @@
+import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:provider/provider.dart';
+
+import '../services/ad_service.dart';
+import '../services/alarm_service.dart';
+import '../services/breathing_detector.dart';
+import '../services/drowsiness_detector.dart';
+import '../services/nap_timer_service.dart';
+import '../services/sleep_log_service.dart';
+import '../services/stats_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/status_hero.dart';
+import 'detect_screen.dart';
+import 'improve_screen.dart';
+import 'log_screen.dart';
+import 'nap_screen.dart';
+import 'settings_screen.dart';
+
+/// Five destinations is past what a top TabBar handles comfortably on a
+/// phone, so navigation lives at the bottom — which also gives the content
+/// area back the vertical space the old header was eating.
+class HomeShell extends StatefulWidget {
+  const HomeShell({super.key});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _index = 0;
+  BannerAd? _banner;
+
+  static const _pages = [
+    DetectScreen(),
+    NapScreen(),
+    LogScreen(),
+    ImproveScreen(),
+    SettingsScreen(),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final stats = context.read<StatsService>();
+    if (!stats.adsRemoved) {
+      _banner = context.read<AdService>().createBanner(
+        onLoaded: () => setState(() {}),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _banner?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final detector = context.watch<DrowsinessDetector>();
+    final breathing = context.watch<BreathingDetector>();
+    final nap = context.watch<NapTimerService>();
+    final alarm = context.watch<AlarmService>();
+    final stats = context.watch<StatsService>();
+    final log = context.watch<SleepLogService>();
+
+    // Tear the banner down for good once ads are bought off, rather than just
+    // hiding it — otherwise it keeps loading and costing bandwidth.
+    if (stats.adsRemoved && _banner != null) {
+      final banner = _banner;
+      _banner = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => banner?.dispose());
+    }
+
+    final anyAlarming =
+        detector.alarmFiring ||
+        breathing.alarmFiring ||
+        nap.phase == NapPhase.done;
+
+    final (mode, label, value) = _status(detector, breathing, nap, anyAlarming);
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: StatusHero(
+                    mode: mode,
+                    label: label,
+                    value: value,
+                    onSnooze: anyAlarming
+                        ? () {
+                            alarm.stop();
+                            if (detector.alarmFiring) {
+                              detector.snooze();
+                              stats.bumpAlarm('スヌーズ 3分');
+                            } else if (breathing.alarmFiring) {
+                              breathing.snooze();
+                              stats.bumpAlarm('スヌーズ 3分');
+                            } else {
+                              nap.snooze();
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+                Expanded(
+                  child: IndexedStack(index: _index, children: _pages),
+                ),
+                if (_banner != null && !stats.adsRemoved)
+                  SizedBox(
+                    width: _banner!.size.width.toDouble(),
+                    height: _banner!.size.height.toDouble(),
+                    child: AdWidget(ad: _banner!),
+                  ),
+              ],
+            ),
+          ),
+          AlarmFlashOverlay(active: anyAlarming),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        height: 62,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        backgroundColor: c.surface,
+        indicatorColor: c.accentAlert.withValues(alpha: 0.15),
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.visibility_outlined),
+            selectedIcon: Icon(Icons.visibility),
+            label: '検知',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.bedtime_outlined),
+            selectedIcon: Icon(Icons.bedtime),
+            label: '仮眠',
+          ),
+          NavigationDestination(
+            // A dot on the tab is the only nudge toward the consult card —
+            // a persistent pattern deserves to be noticed, but not nagged at.
+            icon: Badge(
+              isLabelVisible: log.needsClinicalAttention,
+              backgroundColor: c.accentAlert,
+              child: const Icon(Icons.event_note_outlined),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: log.needsClinicalAttention,
+              backgroundColor: c.accentAlert,
+              child: const Icon(Icons.event_note),
+            ),
+            label: '記録',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.self_improvement_outlined),
+            selectedIcon: Icon(Icons.self_improvement),
+            label: '改善',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: '設定',
+          ),
+        ],
+      ),
+    );
+  }
+
+  (StatusMode, String, String) _status(
+    DrowsinessDetector detector,
+    BreathingDetector breathing,
+    NapTimerService nap,
+    bool anyAlarming,
+  ) {
+    if (anyAlarming) {
+      return (
+        StatusMode.alert,
+        (detector.alarmFiring || breathing.alarmFiring) ? '居眠り検知' : '仮眠タイマー',
+        detector.alarmFiring
+            ? '⚠ 目を閉じています！'
+            : (breathing.alarmFiring ? '⚠ 寝息を検知しました！' : '⏰ 起床時間！'),
+      );
+    }
+    if (nap.phase == NapPhase.running) {
+      return (StatusMode.warn, '仮眠タイマー', '${nap.minutes}分仮眠中');
+    }
+    if (detector.state == DetectorState.watching ||
+        breathing.state == MicState.listening) {
+      final eyeClosingIn = detector.closedThreshold.inSeconds;
+      final eyeRatio = eyeClosingIn == 0
+          ? 0.0
+          : detector.closedFor.inSeconds / eyeClosingIn;
+      final breathClosingIn = breathing.alarmThreshold.inSeconds;
+      final breathRatio = breathClosingIn == 0
+          ? 0.0
+          : breathing.regularFor.inSeconds / breathClosingIn;
+      final ratio = eyeRatio > breathRatio ? eyeRatio : breathRatio;
+      return (
+        ratio > 0.5 ? StatusMode.warn : StatusMode.watching,
+        '居眠り検知',
+        ratio > 0.5 ? '眠気の兆候あり' : '監視中',
+      );
+    }
+    return (StatusMode.idle, '現在のモード', '待機中');
+  }
+}
