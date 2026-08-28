@@ -78,8 +78,10 @@ adb -s <device-id> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 ## リリース前に必要な作業
 
-- [ ] **本番署名キーストアの作成**（現状はデバッグ署名のまま。`key.jks` は `.gitignore` 済み。
-      紛失すると Play のアプリを二度と更新できないので必ず repo 外にバックアップすること）
+- [ ] **本番署名キーストアの作成**（Gradle 側の配線は済み。あとは `key.jks` を作り
+      `android/key.properties` を書くだけ。手順は `android/key.properties.example` 参照。
+      **キーストアを失うと Play のアプリを二度と更新できない**ので、`key.jks` は repo 外に、
+      パスワードはパスワードマネージャーに、それぞれ別の場所へバックアップすること）
 - [ ] AdMob に新規アプリを登録し、Banner / Interstitial の実 ID を
       `lib/services/ad_service.dart` と `AndroidManifest.xml` に反映
       （現状は Google の公開テスト ID。**実 ID にしたあと自分でクリックしないこと**＝アカウント凍結のリスク）
