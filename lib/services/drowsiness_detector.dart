@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart'
     show ChangeNotifier, defaultTargetPlatform, TargetPlatform, WriteBuffer;
 import 'package:flutter/widgets.dart' show Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'screen_wake.dart';
 
 enum DetectorState { idle, starting, watching, denied, alarming }
 
@@ -59,6 +60,27 @@ class DrowsinessDetector extends ChangeNotifier {
   static const _perclosMinSamples = 30;
   double perclos = 0;
 
+  // Eyelid closure plays out over seconds, so there is nothing to gain from
+  // running ML Kit at the camera's full frame rate — and plenty to lose,
+  // since this app is meant to sit on a desk running all afternoon. Analysing
+  // ~6 frames a second keeps PERCLOS well sampled at a fraction of the drain.
+  static const _minFrameGap = Duration(milliseconds: 160);
+  DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _wakeKey = 'detect';
+
+  // The UI does not need a rebuild per analysed frame either. Numbers refresh
+  // a few times a second; anything that changes *state* (alarm on/off, face
+  // lost/found) still notifies immediately via [_notify].
+  static const _minNotifyGap = Duration(milliseconds: 200);
+  DateTime _lastNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _notify({bool force = false}) {
+    final now = DateTime.now();
+    if (!force && now.difference(_lastNotifyAt) < _minNotifyGap) return;
+    _lastNotifyAt = now;
+    notifyListeners();
+  }
+
   Future<void> start() async {
     state = DetectorState.starting;
     notifyListeners();
@@ -85,14 +107,20 @@ class DrowsinessDetector extends ChangeNotifier {
       _perclosWindow.clear();
       perclos = 0;
       await controller.startImageStream(_onFrame);
+      // Without this the screen sleeps a minute after the last touch, Android
+      // tears the camera down, and detection dies silently — which breaks the
+      // one thing this app is for: sitting on the desk watching you.
+      await ScreenWake.acquire(_wakeKey);
       state = DetectorState.watching;
     } catch (_) {
       state = DetectorState.denied;
+      await ScreenWake.release(_wakeKey);
     }
     notifyListeners();
   }
 
   Future<void> stop() async {
+    await ScreenWake.release(_wakeKey);
     alarmFiring = false;
     noFaceSeen = false;
     final controller = _controller;
@@ -119,6 +147,24 @@ class DrowsinessDetector extends ChangeNotifier {
     closedThreshold = Duration(seconds: seconds);
   }
 
+  /// Android reclaims the camera whenever the app leaves the foreground, and
+  /// the old controller is dead on return — the preview would come back black
+  /// and detection would never resume. Tear it down on the way out and build
+  /// a fresh one on the way back in.
+  bool _resumeWhenForegrounded = false;
+
+  Future<void> handleAppPaused() async {
+    if (state != DetectorState.watching) return;
+    _resumeWhenForegrounded = true;
+    await stop();
+  }
+
+  Future<void> handleAppResumed() async {
+    if (!_resumeWhenForegrounded) return;
+    _resumeWhenForegrounded = false;
+    await start();
+  }
+
   /// Silences the current alarm and ignores closed-eye time for 3 minutes.
   void snooze() {
     alarmFiring = false;
@@ -132,11 +178,16 @@ class DrowsinessDetector extends ChangeNotifier {
 
   Future<void> _onFrame(CameraImage image) async {
     if (_busy || _controller == null) return;
+    final now = DateTime.now();
+    if (now.difference(_lastFrameAt) < _minFrameGap) return;
+    _lastFrameAt = now;
     _busy = true;
     try {
       final inputImage = _toInputImage(image, _controller!.description);
       if (inputImage == null) return;
       final faces = await _faceDetector.processImage(inputImage);
+      final wasAlarming = alarmFiring;
+      final hadFace = !noFaceSeen;
       if (faces.isEmpty) {
         noFaceSeen = true;
       } else {
@@ -200,7 +251,9 @@ class DrowsinessDetector extends ChangeNotifier {
           }
         }
       }
-      notifyListeners();
+      // A change in alarm or face state must reach the UI now; the rest is
+      // just numbers ticking and can wait for the next throttle window.
+      _notify(force: alarmFiring != wasAlarming || hadFace == noFaceSeen);
     } catch (_) {
       // Drop malformed frames silently; next frame will retry.
     } finally {

@@ -27,9 +27,24 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
   BannerAd? _banner;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final detector = context.read<DrowsinessDetector>();
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        detector.handleAppPaused();
+      case AppLifecycleState.resumed:
+        detector.handleAppResumed();
+      case AppLifecycleState.inactive:
+        break;
+    }
+  }
 
   static const _pages = [
     DetectScreen(),
@@ -42,6 +57,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final stats = context.read<StatsService>();
     if (!stats.adsRemoved) {
       _banner = context.read<AdService>().createBanner(
@@ -52,6 +68,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _banner?.dispose();
     super.dispose();
   }

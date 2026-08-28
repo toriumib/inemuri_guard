@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'screen_wake.dart';
 
 enum NapPhase { idle, running, done }
 
@@ -17,6 +18,7 @@ class NapTimerService extends ChangeNotifier {
   NapPhase phase = NapPhase.idle;
   bool alarmFiring = false;
   Timer? _timer;
+  static const _wakeKey = 'nap';
 
   void selectPreset(int m) {
     if (phase == NapPhase.running) return;
@@ -28,6 +30,7 @@ class NapTimerService extends ChangeNotifier {
 
   void start() {
     _timer?.cancel();
+    ScreenWake.acquire(_wakeKey);
     phase = NapPhase.running;
     alarmFiring = false;
     notifyListeners();
@@ -43,6 +46,8 @@ class NapTimerService extends ChangeNotifier {
 
   void _finish() {
     _timer?.cancel();
+    // Hold the screen through the alarm — releasing here would let it
+    // sleep while the thing is still ringing. cancel() does the release.
     phase = NapPhase.done;
     alarmFiring = true;
     notifyListeners();
@@ -50,6 +55,7 @@ class NapTimerService extends ChangeNotifier {
 
   void snooze() {
     _timer?.cancel();
+    ScreenWake.acquire(_wakeKey);
     minutes = (snoozeSeconds / 60).ceil();
     totalSeconds = snoozeSeconds;
     remainingSeconds = snoozeSeconds;
@@ -68,6 +74,7 @@ class NapTimerService extends ChangeNotifier {
 
   void cancel() {
     _timer?.cancel();
+    ScreenWake.release(_wakeKey);
     phase = NapPhase.idle;
     alarmFiring = false;
     remainingSeconds = totalSeconds;
