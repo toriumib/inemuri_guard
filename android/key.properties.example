@@ -1,0 +1,17 @@
+# Release signing config — copy to `key.properties` and fill in.
+#
+# key.properties and *.jks are gitignored. NEVER commit them.
+#
+# ⚠️ このキーストアを失うと Play のアプリを二度と更新できません。
+#    （Play App Signing に登録していても、アップロード鍵の再登録には
+#      Google への申請が必要で、即座には復旧できません）
+#    - key.jks はリポジトリの外にバックアップすること
+#    - パスワードはパスワードマネージャーに保存すること
+#    - 両方を同じ場所に置かないこと
+#
+# storeFile は android/ ディレクトリからの相対パス。
+
+storeFile=key.jks
+storePassword=ここにキーストアのパスワード
+keyAlias=upload
+keyPassword=ここに鍵のパスワード
