@@ -19,6 +19,34 @@
   寝ていて分からないため、「起こす」を意図した反復パターン。
 - 設定キー: `watch_bridge_beta`（SharedPreferences、既定 ON）。
 
+### フェーズ1の検証記録（2026-09-04、エミュレータ）
+
+エミュレータ(Pixel 6a / API 35)で dart-define の検証フック
+（`FIRE_NOTIFICATION_TEST=true` の debug ビルドのみ、起動3秒後に1通発火）を使い、
+`dumpsys notification --noredact` で通知レコードを直接確認した:
+
+| 設定 | flags | 意味 |
+|---|---|---|
+| bridgeToWatch=true（既定） | `ONGOING_EVENT\|HIGH_PRIORITY` | LOCAL_ONLY なし → 時計へ転送される |
+| bridgeToWatch=false | `ONGOING_EVENT\|HIGH_PRIORITY\|LOCAL_ONLY` | 時計への転送が止まる |
+
+設定UIのトグルが SharedPreferences の値と双方向で一致することも確認。
+
+**Wear OS エミュレータとの実ペアリングは未検証。** 検証するには:
+スマホ側エミュレータに Play Store から「Wear OS by Google」コンパニオンアプリを
+入れ（Google アカウントへのサインインが必要）、アプリ内の ⋮ →「エミュレータと
+ペア設定」。Wear AVD（`wear4` = android-33 / android-wear / x86_64）は作成済み。
+
+### 検証中に見つけて直したこと（リリース品質に関わる）
+
+1. `main()` が `await adService.init()`（MobileAds 初期化）を待っていた。
+   Play services が不調な環境でこの await が戻らず、通知・UI を含むアプリ全体が
+   スプラッシュのまま止まるのを確認した。**広告初期化をノンブロッキング化**した。
+   広告は準備できたものから載る。
+2. `AlarmService.start()` が音声の初回再生を await してから通知を出していた。
+   音声初期化が環境で止まると、時計への転送も引きずられて遅れる。**通知を最初に
+   投げてから音を鳴らす**順に変えた（エミュレータで実際に止まるのを確認）。
+
 ## フェーズ2: 時計を眠気センサーにする
 
 ### 動機
