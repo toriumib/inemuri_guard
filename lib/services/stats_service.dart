@@ -24,6 +24,7 @@ class StatsService extends ChangeNotifier {
   static const _kLog = 'stats_log';
   static const _kAdsRemoved = 'ads_removed';
   static const _kShowCameraPreview = 'show_camera_preview';
+  static const _kWatchBridge = 'watch_bridge_beta';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
   static const _kNapsAllTime = 'stats_naps_all_time';
@@ -34,6 +35,7 @@ class StatsService extends ChangeNotifier {
   int napsAllTime = 0;
   bool adsRemoved = false;
   bool showCameraPreview = true;
+  bool watchBridge = true;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -59,6 +61,7 @@ class StatsService extends ChangeNotifier {
     }
     adsRemoved = prefs.getBool(_kAdsRemoved) ?? false;
     showCameraPreview = prefs.getBool(_kShowCameraPreview) ?? true;
+    watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));
@@ -123,6 +126,13 @@ class StatsService extends ChangeNotifier {
     showCameraPreview = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kShowCameraPreview, value);
+    notifyListeners();
+  }
+
+  Future<void> setWatchBridge(bool value) async {
+    watchBridge = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kWatchBridge, value);
     notifyListeners();
   }
 

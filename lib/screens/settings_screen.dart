@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/notification_service.dart';
 import '../services/purchase_service.dart';
 import '../services/stats_service.dart';
 import '../services/support_service.dart';
@@ -22,10 +23,55 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 16),
         _RemoveAdsCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
+        _WatchBridgeCard(stats: stats),
+        const SizedBox(height: 16),
         const _SupportCard(),
         const SizedBox(height: 16),
         const _AboutCard(),
       ],
+    );
+  }
+}
+
+/// 時計連携（β）。仕組みはスマホの通知をWear OSが自動で時計へ転送する
+/// もので、専用の時計アプリは不要。オフにすると通知へ
+/// FLAG_LOCAL_ONLY を付けて転送を止める。
+class _WatchBridgeCard extends StatelessWidget {
+  final StatsService stats;
+  const _WatchBridgeCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final notifications = context.read<NotificationService>();
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('時計にも通知（β）', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              '眠気を検知したとき、ペアリングしたWear OSの時計でも振動します。'
+              'スマホの通知がそのまま時計へ転送される仕組みで、専用アプリは不要です。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: stats.watchBridge,
+              onChanged: (v) {
+                notifications.bridgeToWatch = v;
+                stats.setWatchBridge(v);
+              },
+              title: const Text('時計へ転送する'),
+              subtitle: const Text('オフにしてもスマホ側の振動・音は変わりません'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
