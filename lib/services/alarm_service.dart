@@ -72,10 +72,13 @@ class AlarmService extends ChangeNotifier {
 
   Future<void> start({String reason = '居眠りの兆候を検知しました'}) async {
     if (isFiring) return;
-    await _burst();
+    // 通知を最初に投げる。音声の初期化は環境によって止まることがあり
+    // （エミュレータやフォーカス争奪で await が返らないのを確認済み）、
+    // 時計への転送だけは音の成否に引きずられないようにする。
+    await notifications.fireAlarm('起きてください', reason);
+    unawaited(_burst().catchError((_) {}));
     _repeatTimer = Timer.periodic(tone.gap, (_) => _burst());
     _startVibration();
-    notifications.fireAlarm('起きてください', reason);
     notifyListeners();
   }
 

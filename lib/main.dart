@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,12 +26,23 @@ Future<void> main() async {
   await sleepLog.load();
 
   final adService = AdService();
-  await adService.init();
+  // 広告SDKの初期化は待たない。Play servicesが不調な環境で
+  // MobileAds.initialize() が戻らなくなり、通知もUIも始動しないのを
+  // エミュレータで確認した。広告は準備できたものから載る。
+  unawaited(adService.init().catchError((_) {}));
 
   final notifications = NotificationService();
   await notifications.init();
   // 時計への通知転送は設定で切れる。起動時に保存値を反映する。
   notifications.bridgeToWatch = stats.watchBridge;
+
+  // 通知経路の検証用（--dart-define=FIRE_NOTIFICATION_TEST=true のdebugビルド限定）。
+  // 起動3秒後にアラーム通知を1回だけ出す。リリースビルドには入らない。
+  if (kDebugMode && const bool.fromEnvironment('FIRE_NOTIFICATION_TEST')) {
+    Future.delayed(const Duration(seconds: 3), () {
+      notifications.fireAlarm('起きてください', '通知経路の確認（dart-define）');
+    });
+  }
 
   runApp(
     InemuriGuardApp(

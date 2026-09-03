@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Posting a high-importance, vibrating notification does double duty on
@@ -50,7 +49,11 @@ class NotificationService {
   }
 
   Future<void> fireAlarm(String title, String body) async {
-    if (!_ready) return;
+    if (!_ready) {
+      debugPrint('fireAlarm: skipped, not ready');
+      return;
+    }
+    debugPrint('fireAlarm: posting (bridgeToWatch=$bridgeToWatch)');
     final androidDetails = AndroidNotificationDetails(
       _channelId,
       '居眠り・仮眠アラーム',
@@ -75,6 +78,7 @@ class NotificationService {
       body,
       NotificationDetails(android: androidDetails),
     );
+    debugPrint('fireAlarm: posted');
   }
 
   Future<void> cancelAlarm() async {
