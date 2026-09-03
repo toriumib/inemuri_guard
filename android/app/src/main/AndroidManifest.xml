@@ -41,13 +41,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Google's public TEST AdMob App ID. Required for the app to run at
-             all (google_mobile_ads crashes on init without one). Replace with
-             the real App ID once a new AdMob app is created for this project —
-             see lib/services/ad_service.dart. -->
+        <!-- 本番の AdMob アプリID(居眠りガード)。debug もこの ID で動く。
+             広告ユニットIDは lib/services/ad_service.dart。 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-6744940157577324~5400800759"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

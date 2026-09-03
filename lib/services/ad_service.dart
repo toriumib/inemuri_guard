@@ -3,18 +3,17 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// Ad unit IDs.
 ///
-/// These are Google's public TEST ids — safe to ship in debug and to use
-/// while developing. BEFORE release, create a new AdMob app under the same
-/// AdMob account used for nanimonjya/petaname, generate real Banner and
-/// Interstitial unit IDs, and swap them in here (see build reference memory
-/// for how those IDs are organized).
+/// release は AdMob コンソールで発行した本番ユニット(居眠りガード、アプリID
+/// ca-app-pub-6744940157577324~5400800759)。debug は Google 公開のテストIDの
+/// まま。テスト端末では AdMob コンソールのテストデバイス登録か
+/// `flutter.ads_removed` フラグで広告を消すこと。
 class AdIds {
   static String get bannerUnitId => kReleaseMode
-      ? 'ca-app-pub-REPLACE_WITH_REAL_ID/BANNER'
+      ? 'ca-app-pub-6744940157577324/9148474078'
       : 'ca-app-pub-3940256099942544/6300978111'; // Google test banner
 
   static String get interstitialUnitId => kReleaseMode
-      ? 'ca-app-pub-REPLACE_WITH_REAL_ID/INTERSTITIAL'
+      ? 'ca-app-pub-6744940157577324/5209229060'
       : 'ca-app-pub-3940256099942544/1033173712'; // Google test interstitial
 }
 
