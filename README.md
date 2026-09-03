@@ -3,7 +3,7 @@
 オフィスでの居眠り対策 Android アプリ。カメラで目の開閉を見て居眠りを検知し、
 科学的根拠のある長さのパワーナップを計り、居眠りのパターンを記録する。
 
-`applicationId`: `com.toriumi.inemuri_guard`
+`applicationId`: `com.stop.sleeping`(Play Console 側で先に登録された名前。namespace は com.toriumi.inemuri_guard のまま)
 
 ## 画面
 

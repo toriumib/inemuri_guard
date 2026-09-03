@@ -36,8 +36,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.toriumi.inemuri_guard"
+        // Play Console 側で先に登録されたパッケージ名に合わせる。
+        // namespace はそのまま(コードの Kotlin パッケージとは無関係)。
+        applicationId = "com.stop.sleeping"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
