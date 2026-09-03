@@ -27,6 +27,8 @@ Future<void> main() async {
 
   final notifications = NotificationService();
   await notifications.init();
+  // 時計への通知転送は設定で切れる。起動時に保存値を反映する。
+  notifications.bridgeToWatch = stats.watchBridge;
 
   runApp(
     InemuriGuardApp(

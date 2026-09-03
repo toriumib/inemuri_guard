@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Posting a high-importance, vibrating notification does double duty on
@@ -5,11 +7,18 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 /// notifications by default — buzzes any paired watch too, with no separate
 /// watch app required. This is intentionally the *only* way this app talks
 /// to a watch; there's no companion Wear OS app.
+///
+/// [bridgeToWatch] controls that mirroring. Off = the notification is posted
+/// with FLAG_LOCAL_ONLY, which tells Android not to bridge it to a paired
+/// watch (the phone still vibrates normally). Set from StatsService on
+/// startup and whenever the user flips the 設定 toggle.
 class NotificationService {
   static const _channelId = 'sleep_alarm';
+  static const _flagLocalOnly = 0x100; // Notification.FLAG_LOCAL_ONLY
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _ready = false;
+  bool bridgeToWatch = true;
 
   Future<void> init() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -42,7 +51,7 @@ class NotificationService {
 
   Future<void> fireAlarm(String title, String body) async {
     if (!_ready) return;
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       _channelId,
       '居眠り・仮眠アラーム',
       importance: Importance.max,
@@ -51,15 +60,20 @@ class NotificationService {
       autoCancel: false,
       playSound: false,
       enableVibration: true,
-      vibrationPattern: null,
+      // Three 700ms bursts with short gaps. A short single buzz is easy to
+      // sleep through on a wrist; a repeating pattern reads as "wake up".
+      vibrationPattern: Int64List.fromList([0, 700, 350, 700, 350, 700]),
       category: AndroidNotificationCategory.alarm,
       fullScreenIntent: true,
+      additionalFlags: bridgeToWatch
+          ? null
+          : Int32List.fromList([_flagLocalOnly]),
     );
     await _plugin.show(
       1001,
       title,
       body,
-      const NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails),
     );
   }
 
