@@ -435,8 +435,49 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
+/// 🛠 開発者モードの合言葉。動作確認と画面撮影のためのもの。
+/// なまえがお（同じ開発者の別アプリ）と同じ仕組みで揃えてある。
+const String _kDevPassphrase = 'Toriumi';
+
 class _AboutCard extends StatelessWidget {
   const _AboutCard();
+
+  Future<void> _askDevPassword(BuildContext context) async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('開発者モード'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: '合言葉'),
+          onSubmitted: (_) => Navigator.pop(c, true),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(c, true), child: const Text('有効にする')),
+        ],
+      ),
+    );
+    final input = ctrl.text.trim();
+    ctrl.dispose();
+    if (ok != true || !context.mounted) return;
+    if (input != _kDevPassphrase) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('合言葉が違います')));
+      return;
+    }
+    // ⚠️ 動作確認・スクショ撮影中に広告が挟まらないようにするためだけの
+    //    フラグ。課金の代わりにはならない（購入フローとは別経路）。
+    await context.read<StatsService>().setAdsRemoved(true);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('開発者モードON：広告を消しました')));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +488,14 @@ class _AboutCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('このアプリについて', style: Theme.of(context).textTheme.titleMedium),
+            // ⚠️ 一般ユーザーの目に触れない場所に置く。見出しの長押しで開く
+            //    （なまえがおはボタン露出だが、こちらはボタン数を増やしたく
+            //    ないので長押しにした）。
+            GestureDetector(
+              onLongPress: () => _askDevPassword(context),
+              child: Text('このアプリについて',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
             const SizedBox(height: 8),
             Text(
               'カメラ映像と音声はすべて端末内だけで処理され、外部に送信・保存されません。\n\n'
