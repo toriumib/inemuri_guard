@@ -157,11 +157,9 @@ class _DetectScreenState extends State<DetectScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
-                  _ChipThresholdPicker(
+                  _ThresholdSlider(
                     title: '何秒目を閉じたら起こす？',
-                    options: const [5, 10, 15, 20, 30],
                     value: stats.eyeThresholdSeconds,
-                    suffix: '秒',
                     color: c.accentAlert,
                     onChanged: (v) {
                       stats.setEyeThresholdSeconds(v);
@@ -747,6 +745,103 @@ class _LogList extends StatelessWidget {
               ],
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// 「何秒目を閉じたら起こす」をスライダーで選ぶ。
+///
+/// 選択肢を並べる形だと、刻みの間の値（7秒、12秒）が選べず、しかも
+/// 選択肢を増やすほど画面を食う。ここは連続量なのでスライダーが素直。
+///
+/// 下限は3秒。まばたきは 0.1〜0.4 秒、意図的に閉じても1秒程度なので、
+/// それより短くすると普通のまばたきで鳴ってしまう。
+class _ThresholdSlider extends StatefulWidget {
+  final String title;
+  final int value;
+  final Color color;
+  final ValueChanged<int> onChanged;
+  const _ThresholdSlider({
+    required this.title,
+    required this.value,
+    required this.color,
+    required this.onChanged,
+  });
+
+  static const minSeconds = 3;
+  static const maxSeconds = 60;
+
+  @override
+  State<_ThresholdSlider> createState() => _ThresholdSliderState();
+}
+
+class _ThresholdSliderState extends State<_ThresholdSlider> {
+  /// 指を動かしている間の値。離すまで保存しない（動かすたびに
+  /// SharedPreferences へ書くと、指の動きに書き込みが張り付く）。
+  double? _dragging;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final shown = (_dragging ?? widget.value.toDouble()).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.title,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            Text(
+              '$shown秒',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: widget.color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: shown.toDouble().clamp(
+            _ThresholdSlider.minSeconds.toDouble(),
+            _ThresholdSlider.maxSeconds.toDouble(),
+          ),
+          min: _ThresholdSlider.minSeconds.toDouble(),
+          max: _ThresholdSlider.maxSeconds.toDouble(),
+          divisions: _ThresholdSlider.maxSeconds - _ThresholdSlider.minSeconds,
+          label: '$shown秒',
+          activeColor: widget.color,
+          // 溝の色を明示する。テーマ任せだとカードの白地に溶けて、
+          // つまみだけが宙に浮いて見える（実機で確認）。
+          inactiveColor: c.border,
+          onChanged: (v) => setState(() => _dragging = v),
+          onChangeEnd: (v) {
+            setState(() => _dragging = null);
+            widget.onChanged(v.round());
+          },
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${_ThresholdSlider.minSeconds}秒（敏感）',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontSize: 12, color: c.textDim),
+            ),
+            Text(
+              '${_ThresholdSlider.maxSeconds}秒（鈍感）',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontSize: 12, color: c.textDim),
+            ),
+          ],
+        ),
       ],
     );
   }
