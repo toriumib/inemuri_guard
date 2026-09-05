@@ -191,6 +191,7 @@ class DrowsinessDetector extends ChangeNotifier {
     alarmFiring = false;
     noFaceSeen = false;
     backgroundFailure = null;
+    _handedOverToNative = false;
     final controller = _controller;
     _controller = null;
     if (controller != null) {
@@ -233,6 +234,14 @@ class DrowsinessDetector extends ChangeNotifier {
   /// a fresh one on the way back in.
   bool _resumeWhenForegrounded = false;
 
+  /// native 側へ引き継ぎ済みか。
+  ///
+  /// Flutter は背面へ回るとき hidden と paused を続けて送るので、
+  /// [handleAppPaused] は一度の切り替えで二度呼ばれる。素直に二度
+  /// 引き継ぐと native 側が開いている最中のカメラをもう一度開き、
+  /// 自分とカメラを奪い合って落ちる（実機で確認）。
+  bool _handedOverToNative = false;
+
   Future<void> handleAppPaused() async {
     if (state != DetectorState.watching) return;
     // 常駐サービスが動いていれば、背面に回っても Android はカメラを
@@ -241,6 +250,8 @@ class DrowsinessDetector extends ChangeNotifier {
     // 背面では Flutter 側のカメラが Android に取り上げられる。
     // そこで native の Camera2（Service が持つ）へ引き継ぐ。
     if (NativeEye.isRunning) {
+      if (_handedOverToNative) return;
+      _handedOverToNative = true;
       await _handOverToNative();
       return;
     }
@@ -254,6 +265,8 @@ class DrowsinessDetector extends ChangeNotifier {
 
   Future<void> handleAppResumed() async {
     if (NativeEye.isRunning && state == DetectorState.watching) {
+      if (!_handedOverToNative) return;
+      _handedOverToNative = false;
       await _takeBackFromNative();
       return;
     }
