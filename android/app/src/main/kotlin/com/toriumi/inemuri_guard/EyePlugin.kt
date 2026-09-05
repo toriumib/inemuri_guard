@@ -1,0 +1,87 @@
+package com.toriumi.inemuri_guard
+
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodChannel
+
+/**
+ * [EyeService] と Dart のあいだの配線。
+ *
+ * - MethodChannel `inemuri/eye` … 開始・停止・稼働確認
+ * - EventChannel  `inemuri/eye_events` … 1フレームごとの目の開き具合
+ *
+ * 判定（しきい値・PERCLOS）は Dart 側に置いたままにしている。
+ * 同じ判断を native と Dart の二か所に書くと、必ず片方だけ直して食い違うため。
+ */
+class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
+
+    private val method = MethodChannel(messenger, "inemuri/eye")
+    private val events = EventChannel(messenger, "inemuri/eye_events")
+    private val main = Handler(Looper.getMainLooper())
+
+    init {
+        method.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    val text = call.argument<String>("text") ?: "動作中"
+                    val i = Intent(context, EyeService::class.java).apply {
+                        action = EyeService.ACTION_START
+                        putExtra(EyeService.EXTRA_TEXT, text)
+                    }
+                    // camera 型の前景サービスは、アプリが前面にいるこの瞬間しか
+                    // 開始できない（Android 14+）。Dart 側も開始操作の直後に呼ぶ。
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(i)
+                    } else {
+                        context.startService(i)
+                    }
+                    result.success(true)
+                }
+                "acquire", "release" -> {
+                    val act = if (call.method == "acquire")
+                        EyeService.ACTION_ACQUIRE else EyeService.ACTION_RELEASE
+                    // すでに前景サービスとして動いているので startService でよい。
+                    // ここで startForegroundService を使うと「背面からの開始」と
+                    // みなされて camera 型が SecurityException で落ちる。
+                    context.startService(
+                        Intent(context, EyeService::class.java).apply { action = act }
+                    )
+                    result.success(true)
+                }
+                "stop" -> {
+                    context.stopService(Intent(context, EyeService::class.java))
+                    result.success(true)
+                }
+                "isRunning" -> result.success(EyeService.isRunning)
+                else -> result.notImplemented()
+            }
+        }
+
+        events.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(args: Any?, sink: EventChannel.EventSink?) {
+                EyeService.sink = { faceFound, left, right ->
+                    // EventSink は必ずメインスレッドから叩く。
+                    // カメラのハンドラスレッドから直接呼ぶと落ちる。
+                    main.post {
+                        sink?.success(
+                            mapOf(
+                                "face" to faceFound,
+                                "left" to left,
+                                "right" to right
+                            )
+                        )
+                    }
+                }
+            }
+
+            override fun onCancel(args: Any?) {
+                EyeService.sink = null
+            }
+        })
+    }
+}

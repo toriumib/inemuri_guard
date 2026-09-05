@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart'
-    show ChangeNotifier, defaultTargetPlatform, TargetPlatform, WriteBuffer;
+    show
+        ChangeNotifier,
+        debugPrint,
+        defaultTargetPlatform,
+        TargetPlatform,
+        WriteBuffer;
 import 'package:flutter/widgets.dart' show Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'native_eye.dart';
 import 'screen_wake.dart';
 import 'watch_service.dart';
 
@@ -119,6 +125,23 @@ class DrowsinessDetector extends ChangeNotifier {
       // 常駐サービスはここで起こす。ユーザーが開始を押した直後＝アプリが
       // 前面にいるこの瞬間しか、Android 14 以降は camera 型を開始できない。
       await WatchService.start();
+      // native の見張りサービスも**ここで**起こす。カメラはまだ Flutter 側が
+      // 持っているので触らせない（取得は背面に入る直前の acquire で行う）。
+      // Android 14 は camera 型の前景サービスを背面から開始できないため、
+      // 前面にいるこの瞬間に前景化しておく必要がある。
+      await NativeEye.start(
+        notificationText: '動作中',
+        onReading: (face, l, r) {
+          if (!face) {
+            noFaceSeen = true;
+            _notify();
+            return;
+          }
+          noFaceSeen = false;
+          if (l == null || r == null) return;
+          _ingest((l + r) / 2);
+        },
+      );
       state = DetectorState.watching;
     } catch (_) {
       state = DetectorState.denied;
@@ -128,6 +151,7 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    await NativeEye.stop();
     await WatchService.stop();
     await ScreenWake.release(_wakeKey);
     alarmFiring = false;
@@ -167,10 +191,13 @@ class DrowsinessDetector extends ChangeNotifier {
     // 常駐サービスが動いていれば、背面に回っても Android はカメラを
     // 取り上げない。ここで止めてしまうと「他のアプリを開いた瞬間に
     // 見張りが終わる」という、この道具の一番の欠陥がそのまま残る。
+    // 背面では Flutter 側のカメラが Android に取り上げられる。
+    // そこで native の Camera2（Service が持つ）へ引き継ぐ。
+    if (NativeEye.isRunning) {
+      await _handOverToNative();
+      return;
+    }
     if (WatchService.isRunning) {
-      // カメラは Android に取り上げられる。プロセスとマイクとアラームは
-      // 生きているが、瞼は見えなくなる。ここで「見張っています」の顔を
-      // し続けるのが一番たちが悪いので、状態にも通知にも出す。
       cameraPausedInBackground = true;
       WatchService.setText('画面を開くと瞼の検知が再開します');
       notifyListeners();
@@ -183,6 +210,10 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> handleAppResumed() async {
+    if (NativeEye.isRunning && state == DetectorState.watching) {
+      await _takeBackFromNative();
+      return;
+    }
     if (cameraPausedInBackground) {
       // CameraX が自分で繋ぎ直すので、こちらは表示を戻すだけでよい。
       cameraPausedInBackground = false;
@@ -194,6 +225,65 @@ class DrowsinessDetector extends ChangeNotifier {
     await start();
   }
 
+  /// 背面に回るときの引き継ぎ。
+  ///
+  /// Flutter 側のカメラを畳んでから native を起こす。カメラは同時に
+  /// 一つしか開けないので、順番を逆にすると native 側が開けずに失敗する。
+  Future<void> _handOverToNative() async {
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      try {
+        if (controller.value.isStreamingImages) {
+          await controller.stopImageStream();
+        }
+        await controller.dispose();
+      } catch (_) {}
+    }
+    // Flutter 側が手放したあとで取りにいく。カメラは同時に一つしか
+    // 開けないので、順番を逆にすると native 側が開けずに失敗する。
+    await NativeEye.acquire();
+    notifyListeners();
+  }
+
+  /// 前面に戻ったら native を止め、Flutter 側のカメラを張り直す。
+  /// プレビューを出せるのはこちらだけなので、見えている間はこちらに戻す。
+  Future<void> _takeBackFromNative() async {
+    // native にカメラを手放させてから、Flutter 側で開き直す。
+    // サービスは止めない（次に背面へ回るときのために前景のまま置く）。
+    await NativeEye.release();
+    if (state == DetectorState.watching) {
+      await _reopenFlutterCamera();
+    }
+  }
+
+  /// プレビュー用に Flutter 側のカメラを開き直す。
+  /// [start] を呼ぶとサービスの起動などをやり直してしまうので、
+  /// カメラだけを張り直す。
+  Future<void> _reopenFlutterCamera() async {
+    try {
+      final cameras = await availableCameras();
+      final front = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+      final controller = CameraController(
+        front,
+        ResolutionPreset.low,
+        enableAudio: false,
+        imageFormatGroup: defaultTargetPlatform == TargetPlatform.android
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888,
+      );
+      await controller.initialize();
+      _controller = controller;
+      await controller.startImageStream(_onFrame);
+    } catch (e) {
+      debugPrint('カメラを開き直せなかった: $e');
+    }
+    notifyListeners();
+  }
+
   /// Silences the current alarm and ignores closed-eye time for 3 minutes.
   void snooze() {
     alarmFiring = false;
@@ -203,6 +293,67 @@ class DrowsinessDetector extends ChangeNotifier {
     perclos = 0;
     _suppressUntil = DateTime.now().add(const Duration(minutes: 3));
     notifyListeners();
+  }
+
+  /// 目の開き具合ひとつぶんの判定。
+  ///
+  /// **Flutter 側のカメラと native の Camera2 の両方がここを通る。**
+  /// しきい値も PERCLOS もここにしか無い。二か所に同じ判断を書くと、
+  /// 必ず片方だけ直して食い違うため。
+  void _ingest(double raw) {
+    _smoothingWindow.add(raw);
+    if (_smoothingWindow.length > _smoothingSize) {
+      _smoothingWindow.removeAt(0);
+    }
+    eyeOpenness =
+        _smoothingWindow.reduce((a, b) => a + b) / _smoothingWindow.length;
+    history.add(eyeOpenness);
+    if (history.length > historyMax) history.removeAt(0);
+
+    final now = DateTime.now();
+    final suppressed = _suppressUntil != null && now.isBefore(_suppressUntil!);
+    final wasAlarming = alarmFiring;
+
+    if (suppressed) {
+      _eyesClosedSince = null;
+      closedFor = Duration.zero;
+    } else if (eyeOpenness < openThreshold) {
+      _eyesClosedSince ??= now;
+      closedFor = now.difference(_eyesClosedSince!);
+    } else {
+      _eyesClosedSince = null;
+      closedFor = Duration.zero;
+      if (alarmFiring) alarmFiring = false;
+    }
+
+    if (suppressed) {
+      _perclosWindow.clear();
+      perclos = 0;
+    } else {
+      _perclosWindow.add(_TimedSample(now, eyeOpenness));
+      final cutoff = now.subtract(
+        const Duration(seconds: _perclosWindowSeconds),
+      );
+      _perclosWindow.removeWhere((s) => s.time.isBefore(cutoff));
+      if (_perclosWindow.length >= _perclosMinSamples) {
+        final closedCount = _perclosWindow
+            .where((s) => s.openness < _perclosCloseThreshold)
+            .length;
+        perclos = closedCount / _perclosWindow.length;
+      } else {
+        perclos = 0;
+      }
+    }
+
+    if (!alarmFiring &&
+        (closedFor >= closedThreshold ||
+            (!suppressed &&
+                _perclosWindow.length >= _perclosMinSamples &&
+                perclos >= _perclosAlarmRatio))) {
+      alarmFiring = true;
+    }
+    // 背面では UI が居ないので、鳴らす判断の変化だけは必ず通す。
+    _notify(force: alarmFiring != wasAlarming);
   }
 
   Future<void> _onFrame(CameraImage image) async {
@@ -225,59 +376,7 @@ class DrowsinessDetector extends ChangeNotifier {
         final l = face.leftEyeOpenProbability;
         final r = face.rightEyeOpenProbability;
         if (l != null && r != null) {
-          final raw = (l + r) / 2;
-          _smoothingWindow.add(raw);
-          if (_smoothingWindow.length > _smoothingSize) {
-            _smoothingWindow.removeAt(0);
-          }
-          eyeOpenness =
-              _smoothingWindow.reduce((a, b) => a + b) /
-              _smoothingWindow.length;
-          history.add(eyeOpenness);
-          if (history.length > historyMax) history.removeAt(0);
-
-          final now = DateTime.now();
-          final suppressed =
-              _suppressUntil != null && now.isBefore(_suppressUntil!);
-          if (suppressed) {
-            _eyesClosedSince = null;
-            closedFor = Duration.zero;
-          } else if (eyeOpenness < openThreshold) {
-            _eyesClosedSince ??= now;
-            closedFor = now.difference(_eyesClosedSince!);
-          } else {
-            _eyesClosedSince = null;
-            closedFor = Duration.zero;
-            if (alarmFiring) {
-              alarmFiring = false;
-            }
-          }
-          if (suppressed) {
-            _perclosWindow.clear();
-            perclos = 0;
-          } else {
-            _perclosWindow.add(_TimedSample(now, eyeOpenness));
-            final cutoff = now.subtract(
-              const Duration(seconds: _perclosWindowSeconds),
-            );
-            _perclosWindow.removeWhere((s) => s.time.isBefore(cutoff));
-            if (_perclosWindow.length >= _perclosMinSamples) {
-              final closedCount = _perclosWindow
-                  .where((s) => s.openness < _perclosCloseThreshold)
-                  .length;
-              perclos = closedCount / _perclosWindow.length;
-            } else {
-              perclos = 0;
-            }
-          }
-
-          if (!alarmFiring &&
-              (closedFor >= closedThreshold ||
-                  (!suppressed &&
-                      _perclosWindow.length >= _perclosMinSamples &&
-                      perclos >= _perclosAlarmRatio))) {
-            alarmFiring = true;
-          }
+          _ingest((l + r) / 2);
         }
       }
       // A change in alarm or face state must reach the UI now; the rest is
