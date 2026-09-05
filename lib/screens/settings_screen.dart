@@ -560,6 +560,59 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
     final nudge = context.watch<NudgeService>();
     if (!nudge.isSupported) return const SizedBox.shrink();
 
+    // まだ一度も聞いていないなら、スイッチを探させるより先に問いを出す。
+    // 「はい」を押した時点で有効になり、許可の画面まで開く。
+    if (!nudge.asked) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'メールや電話、Slack、LINE などで連絡が来たとき、'
+                'たたき起こす機能が欲しいですか？',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '仮眠中や集中しているあいだに呼ばれても気づけるようになります。'
+                'あとから設定でいつでも切り替えられます。',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.accentAlert,
+                        foregroundColor: c.accentAlertInk,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () => nudge.answer(true),
+                      child: const Text('はい、起こしてほしい'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () => nudge.answer(false),
+                      child: const Text('いらない'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(

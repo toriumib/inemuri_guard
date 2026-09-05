@@ -31,6 +31,7 @@ class NudgeService extends ChangeNotifier {
   static const _events = EventChannel('inemuri/nudge_events');
   static const _kEnabled = 'nudge_enabled';
   static const _kFilter = 'nudge_sender_filter';
+  static const _kAsked = 'nudge_asked';
 
   StreamSubscription? _sub;
 
@@ -42,6 +43,10 @@ class NudgeService extends ChangeNotifier {
 
   /// 直近に起こした相手（画面に出すだけ）。
   String? lastApp;
+
+  /// この機能を使うか、まだ本人に一度も聞いていない状態。
+  /// true になるまでは「連絡が来たら、たたき起こしますか？」の問いを出す。
+  bool asked = false;
 
   /// 差出人・件名の絞り込み。空なら対象アプリの通知すべてで起こす。
   /// 「部長のアドレスからのメールだけ」のような使い方のためのもの。
@@ -57,6 +62,7 @@ class NudgeService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     enabled = prefs.getBool(_kEnabled) ?? false;
     senderFilter = prefs.getStringList(_kFilter) ?? const [];
+    asked = prefs.getBool(_kAsked) ?? false;
     await refreshGranted();
     try {
       apps = (await _method.invokeMethod<List<Object?>>('nudgeApps') ?? [])
@@ -91,6 +97,20 @@ class NudgeService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kEnabled, on);
     await _push();
+    notifyListeners();
+  }
+
+  /// 問いに答えてもらった。「はい」なら有効にして、許可の画面まで開く。
+  /// 許可はユーザー自身がその画面で与えるしかないので、こちらは開くだけ。
+  Future<void> answer(bool yes) async {
+    asked = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAsked, true);
+    if (yes) {
+      await setEnabled(true);
+      await refreshGranted();
+      if (!granted) await openSettings();
+    }
     notifyListeners();
   }
 

@@ -49,7 +49,19 @@ class NudgeListener : NotificationListenerService() {
             "com.google.android.gm" to "Gmail",
             "jp.naver.line.android" to "LINE",
             "com.discord" to "Discord",
+            // 着信。端末ごとに電話アプリが違うので、素の Android・Google・
+            // メーカー製のどれでも拾えるように並べてある。
+            // 着信中の通知は isOngoing が立つので、電話だけは別扱いにする
+            // （[isCall] を参照）。
+            "com.android.server.telecom" to "電話",
+            "com.android.dialer" to "電話",
+            "com.google.android.dialer" to "電話",
+            "com.samsung.android.incallui" to "電話",
+            "jp.co.sharp.android.shphonemenu" to "電話",
         )
+
+        /** 着信かどうか。着信の通知は「進行中」で届くので判定を分ける。 */
+        private fun isCall(label: String) = label == "電話"
 
         /** Dart 側へ「呼ばれた」ことだけを伝える。中身は渡さない。 */
         @Volatile
@@ -98,7 +110,9 @@ class NudgeListener : NotificationListenerService() {
         // 自分が出している常駐通知で自分を起こさないように。
         if (pkg == packageName) return
         // 進行中の通知（音楽再生や同期中など）は「呼ばれた」ではない。
-        if (sbn.isOngoing) return
+        // ただし着信だけは例外で、鳴っている間ずっと「進行中」で届く。
+        // ここで弾くと、いちばん起きるべき電話で起こせなくなる。
+        if (sbn.isOngoing && !isCall(label)) return
 
         if (!matchesFilter(sbn)) {
             Log.d(TAG, "対象アプリだが絞り込みに一致しない: $label")

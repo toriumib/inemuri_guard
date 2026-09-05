@@ -101,6 +101,16 @@ class EyeService : Service() {
     private var busy = false
     private var lastFrameAt = 0L
 
+    /**
+     * カメラを開き始めてから、撮影が始まる（または失敗する）までの間。
+     *
+     * Flutter は背面へ回るとき hidden と paused を続けて送るので、引き継ぎの
+     * 要求が二度届く。[isRunning] は撮影が始まって初めて true になるため、
+     * それだけを見ていると開いている最中にもう一度開いてしまい、
+     * 自分自身とカメラを奪い合って ERROR で落ちる（実機で確認）。
+     */
+    private var opening = false
+
     /** ML Kit に渡す回転角。端末とレンズで違うので決め打ちにしない。 */
     private var sensorOrientation = 270
 
@@ -126,7 +136,7 @@ class EyeService : Service() {
                 //    startForegroundService すると SecurityException で落ちる
                 //    （実機のログで確認済み）。開始と取得を分けているのはこのため。
                 startForegroundWithType("動作中")
-                if (!isRunning) openCamera()
+                if (!isRunning && !opening) openCamera()
             }
             ACTION_RELEASE -> {
                 closeCamera()
@@ -195,6 +205,7 @@ class EyeService : Service() {
     }
 
     private fun openCamera() {
+        opening = true
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -268,6 +279,7 @@ class EyeService : Service() {
      * 黙って [stopSelf] すると「検知開始中」の表示だけが残る。
      */
     private fun failed(message: String) {
+        opening = false
         Log.w(TAG, "見張りを続けられない: $message")
         errorSink?.invoke(message)
         stopSelf()
@@ -307,6 +319,7 @@ class EyeService : Service() {
                 override fun onConfigured(s: CameraCaptureSession) {
                     session = s
                     isRunning = true
+                    opening = false
                     try {
                         s.setRepeatingRequest(req.build(), null, handler)
                     } catch (e: Exception) {
@@ -379,6 +392,7 @@ class EyeService : Service() {
 
     private fun closeCamera() {
         isRunning = false
+        opening = false
         try { session?.close() } catch (_: Exception) {}
         try { cameraDevice?.close() } catch (_: Exception) {}
         try { reader?.close() } catch (_: Exception) {}
