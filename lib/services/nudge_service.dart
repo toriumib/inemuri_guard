@@ -14,9 +14,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// ## 断っておくこと
 ///
-/// 見ているのは**どのアプリから来たか**だけ。本文もタイトルも読んでいないし、
-/// どこにも送らず保存もしない。通知アクセスは Android でもっとも強い権限の
-/// ひとつなので、必要最小限しか触らないようにしてある。
+/// 通知の中身は**どこにも送らないし保存もしない**。端末の中だけで見て、
+/// 起こすかどうかを決めたらその場で捨てる。
+///
+/// ⚠️ [senderFilter] を設定したときに限り、通知のタイトルと本文を
+/// 照合に使う。「このアドレスから届いたときだけ起こす」を実現するには、
+/// 届いた文字を見る以外に方法がないため。絞り込みが空なら、
+/// 見ているのは**どのアプリから来たか**だけ。
+/// 通知アクセスは Android でもっとも強い権限のひとつなので、
+/// 必要最小限しか触らないようにしてある。
 ///
 /// この権限は**ユーザーが設定画面で自分で許可**しないと有効にならない。
 /// アプリから勝手に有効にはできない（[openSettings] を開いてもらうしかない）。
@@ -24,6 +30,7 @@ class NudgeService extends ChangeNotifier {
   static const _method = MethodChannel('inemuri/eye');
   static const _events = EventChannel('inemuri/nudge_events');
   static const _kEnabled = 'nudge_enabled';
+  static const _kFilter = 'nudge_sender_filter';
 
   StreamSubscription? _sub;
 
@@ -36,6 +43,10 @@ class NudgeService extends ChangeNotifier {
   /// 直近に起こした相手（画面に出すだけ）。
   String? lastApp;
 
+  /// 差出人・件名の絞り込み。空なら対象アプリの通知すべてで起こす。
+  /// 「部長のアドレスからのメールだけ」のような使い方のためのもの。
+  List<String> senderFilter = const [];
+
   bool get isSupported => defaultTargetPlatform == TargetPlatform.android;
 
   /// 起こす対象のアプリ名。設定画面に並べるためだけに使う。
@@ -45,6 +56,7 @@ class NudgeService extends ChangeNotifier {
     if (!isSupported) return;
     final prefs = await SharedPreferences.getInstance();
     enabled = prefs.getBool(_kEnabled) ?? false;
+    senderFilter = prefs.getStringList(_kFilter) ?? const [];
     await refreshGranted();
     try {
       apps = (await _method.invokeMethod<List<Object?>>('nudgeApps') ?? [])
@@ -82,6 +94,18 @@ class NudgeService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 絞り込みを差し替える。空リストにすればアプリ単位の判定に戻る。
+  Future<void> setSenderFilter(List<String> values) async {
+    senderFilter = values
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kFilter, senderFilter);
+    await _push();
+    notifyListeners();
+  }
+
   /// 通知アクセスの設定画面を開く。ここでしか許可できない。
   Future<void> openSettings() async {
     if (!isSupported) return;
@@ -97,6 +121,7 @@ class NudgeService extends ChangeNotifier {
     if (!isSupported) return;
     try {
       await _method.invokeMethod('nudgeSetEnabled', {'on': enabled && granted});
+      await _method.invokeMethod('nudgeSetFilter', {'filter': senderFilter});
     } catch (_) {}
   }
 

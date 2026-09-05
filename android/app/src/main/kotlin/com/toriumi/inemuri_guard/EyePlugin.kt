@@ -81,6 +81,11 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                     result.success(true)
                 }
                 "nudgeApps" -> result.success(NudgeListener.WATCHED.values.toList())
+                "nudgeSetFilter" -> {
+                    NudgeListener.senderFilter =
+                        call.argument<List<String>>("filter") ?: emptyList()
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }
