@@ -32,6 +32,10 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                     val i = Intent(context, EyeService::class.java).apply {
                         action = EyeService.ACTION_START
                         putExtra(EyeService.EXTRA_TEXT, text)
+                        putExtra(
+                            EyeService.EXTRA_LENS,
+                            if (call.argument<Boolean>("back") == true) "back" else "front"
+                        )
                     }
                     // camera 型の前景サービスは、アプリが前面にいるこの瞬間しか
                     // 開始できない（Android 14+）。Dart 側も開始操作の直後に呼ぶ。
@@ -49,7 +53,15 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                     // ここで startForegroundService を使うと「背面からの開始」と
                     // みなされて camera 型が SecurityException で落ちる。
                     context.startService(
-                        Intent(context, EyeService::class.java).apply { action = act }
+                        Intent(context, EyeService::class.java).apply {
+                            action = act
+                            // 取得の直前にレンズが切り替わっていても拾えるよう、
+                            // ここでも運ぶ。
+                            putExtra(
+                                EyeService.EXTRA_LENS,
+                                if (call.argument<Boolean>("back") == true) "back" else "front"
+                            )
+                        }
                     )
                     result.success(true)
                 }
@@ -88,6 +100,11 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
 
         events.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(args: Any?, sink: EventChannel.EventSink?) {
+                // 見張れなくなったことも同じ口から流す。黙って止まるのが
+                // 一番まずい壊れ方なので、失敗こそ確実に届ける。
+                EyeService.errorSink = { message ->
+                    main.post { sink?.success(mapOf("error" to message)) }
+                }
                 EyeService.sink = { faceFound, left, right ->
                     // EventSink は必ずメインスレッドから叩く。
                     // カメラのハンドラスレッドから直接呼ぶと落ちる。
@@ -105,6 +122,7 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
 
             override fun onCancel(args: Any?) {
                 EyeService.sink = null
+                EyeService.errorSink = null
             }
         })
     }

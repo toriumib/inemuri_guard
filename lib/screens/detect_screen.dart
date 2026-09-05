@@ -18,7 +18,6 @@ class DetectScreen extends StatefulWidget {
 }
 
 class _DetectScreenState extends State<DetectScreen> {
-  int thresholdSeconds = 10;
   bool _wasEyeAlarming = false;
   bool _wasBreathAlarming = false;
 
@@ -124,7 +123,7 @@ class _DetectScreenState extends State<DetectScreen> {
                               ? null
                               : () async {
                                   detector.setThresholdSeconds(
-                                    thresholdSeconds,
+                                    stats.eyeThresholdSeconds,
                                   );
                                   await detector.start();
                                 },
@@ -160,15 +159,57 @@ class _DetectScreenState extends State<DetectScreen> {
                   const SizedBox(height: 18),
                   _ChipThresholdPicker(
                     title: '何秒目を閉じたら起こす？',
-                    options: const [10, 15, 20, 30],
-                    value: thresholdSeconds,
+                    options: const [5, 10, 15, 20, 30],
+                    value: stats.eyeThresholdSeconds,
                     suffix: '秒',
                     color: c.accentAlert,
                     onChanged: (v) {
-                      setState(() => thresholdSeconds = v);
+                      stats.setEyeThresholdSeconds(v);
                       detector.setThresholdSeconds(v);
                     },
                   ),
+                  const SizedBox(height: 14),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('背面カメラで見張る'),
+                    subtitle: const Text(
+                      '車のスタンドに載せて運転席へ向けるときに使います。'
+                      '机の上に置いて自分に向けるなら切ったままで大丈夫です。',
+                    ),
+                    value: stats.useBackCamera,
+                    onChanged: (v) async {
+                      await stats.setUseBackCamera(v);
+                      await detector.setUseBackCamera(v);
+                    },
+                  ),
+                  if (detector.backgroundFailure != null) ...[
+                    const SizedBox(height: 12),
+                    // 見張れていないのに「検知中」と出したままにしない。
+                    // 起きなかった理由が分からないのが、この道具で一番困る。
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: c.accentAlert.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.error_outline, color: c.accentAlert),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '他のアプリを開いている間の見張りが止まりました'
+                              '（${detector.backgroundFailure}）。'
+                              'この画面を開いている間は見張っています。',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const Divider(height: 28),
                   _ToneRow(alarm: alarm),
                   if (detector.state == DetectorState.denied) ...[

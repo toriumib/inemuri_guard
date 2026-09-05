@@ -60,6 +60,8 @@ class EyeService : Service() {
         const val ACTION_RELEASE = "com.toriumi.inemuri_guard.RELEASE_EYE"
         const val ACTION_STOP = "com.toriumi.inemuri_guard.STOP_EYE"
         const val EXTRA_TEXT = "text"
+        /** "back" なら背面カメラ、それ以外は前面。 */
+        const val EXTRA_LENS = "lens"
 
         private const val CHANNEL_ID = "eye_watch"
         private const val NOTIFICATION_ID = 4711
@@ -70,6 +72,20 @@ class EyeService : Service() {
         /** Dart 側へ結果を渡す口。EyePlugin が差し込む。 */
         @Volatile
         var sink: ((faceFound: Boolean, left: Double?, right: Double?) -> Unit)? = null
+
+        /**
+         * 背面での見張りが**始められなかった/途切れた**ことを Dart へ伝える口。
+         *
+         * これが無いと、カメラを開けなかったときにサービスだけ静かに死んで、
+         * 画面には「検知開始中」が出たままになる。見張っていないのに
+         * 見張っているように見えるのが、この道具で一番あってはならない壊れ方。
+         */
+        @Volatile
+        var errorSink: ((message: String) -> Unit)? = null
+
+        /** 前面(false)か背面(true)か。Dart から渡される。 */
+        @Volatile
+        var useBackLens: Boolean = false
 
         @Volatile
         var isRunning: Boolean = false
@@ -85,9 +101,18 @@ class EyeService : Service() {
     private var busy = false
     private var lastFrameAt = 0L
 
+    /** ML Kit に渡す回転角。端末とレンズで違うので決め打ちにしない。 */
+    private var sensorOrientation = 270
+
+    /** この端末が受け付ける AF モード。固定焦点なら OFF しか入っていない。 */
+    private var afMode: Int? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // レンズの指定は毎回運ばれてくる。取得の直前に切り替わっていても
+        // 拾えるよう、action を見る前に反映する。
+        intent?.getStringExtra(EXTRA_LENS)?.let { useBackLens = it == "back" }
         when (intent?.action) {
             ACTION_STOP -> {
                 stopSelf()
@@ -173,8 +198,7 @@ class EyeService : Service() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.w(TAG, "カメラ権限が無いので開けない")
-            stopSelf()
+            failed("カメラの許可がありません")
             return
         }
 
@@ -190,14 +214,16 @@ class EyeService : Service() {
         handler = Handler(thread!!.looper)
 
         val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        // 机の上なら前面、車のスタンドで運転席へ向けるなら背面、と本人が選ぶ。
+        val wantFacing = if (useBackLens) CameraCharacteristics.LENS_FACING_BACK
+            else CameraCharacteristics.LENS_FACING_FRONT
         val frontId = cm.cameraIdList.firstOrNull {
             cm.getCameraCharacteristics(it)
-                .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
+                .get(CameraCharacteristics.LENS_FACING) == wantFacing
         } ?: cm.cameraIdList.firstOrNull()
 
         if (frontId == null) {
-            Log.w(TAG, "カメラが無い")
-            stopSelf()
+            failed("使えるカメラが見つかりません")
             return
         }
 
@@ -205,6 +231,14 @@ class EyeService : Service() {
         reader = ImageReader.newInstance(640, 480, ImageFormat.YUV_420_888, 2).apply {
             setOnImageAvailableListener({ r -> onFrame(r) }, handler)
         }
+
+        // 向きも AF も端末とレンズごとに違う。開ける前に聞いておく。
+        sensorOrientation = try {
+            cm.getCameraCharacteristics(frontId)
+                .get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 270
+        } catch (_: Exception) { 270 }
+        afMode = pickAfMode(cm, frontId)
+        Log.d(TAG, "カメラを開く id=$frontId 向き=$sensorOrientation AF=$afMode")
 
         try {
             cm.openCamera(frontId, object : CameraDevice.StateCallback() {
@@ -214,25 +248,57 @@ class EyeService : Service() {
                 }
 
                 override fun onDisconnected(device: CameraDevice) {
-                    Log.w(TAG, "カメラが切断された")
-                    device.close(); cameraDevice = null; stopSelf()
+                    device.close(); cameraDevice = null
+                    failed("カメラが他のアプリに使われました")
                 }
 
                 override fun onError(device: CameraDevice, error: Int) {
-                    Log.e(TAG, "カメラのエラー: $error")
-                    device.close(); cameraDevice = null; stopSelf()
+                    device.close(); cameraDevice = null
+                    failed("カメラのエラー（$error）")
                 }
             }, handler)
         } catch (e: SecurityException) {
-            Log.e(TAG, "カメラを開けない", e); stopSelf()
+            Log.e(TAG, "カメラを開けない", e)
+            failed("カメラを開けませんでした")
         }
+    }
+
+    /**
+     * 見張れなくなったことを、隠さずに Dart へ伝えてから止まる。
+     * 黙って [stopSelf] すると「検知開始中」の表示だけが残る。
+     */
+    private fun failed(message: String) {
+        Log.w(TAG, "見張りを続けられない: $message")
+        errorSink?.invoke(message)
+        stopSelf()
+    }
+
+    /**
+     * この端末のフロントカメラが受け付ける AF モードを選ぶ。
+     *
+     * 固定焦点のカメラは `CONTROL_AF_AVAILABLE_MODES` が `[OFF]` しか返さない。
+     * そこへ CONTINUOUS_PICTURE を投げると HAL が
+     * `Function not implemented (-38)` で撮影要求ごと蹴り、
+     * 背面の見張りが丸ごと死ぬ（SHARP A105SH の実機で確認）。
+     * 端末に聞いてから決める。
+     */
+    private fun pickAfMode(cm: CameraManager, id: String): Int? {
+        val modes = try {
+            cm.getCameraCharacteristics(id)
+                .get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
+        } catch (_: Exception) { null } ?: return null
+        val wanted = CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+        return if (modes.contains(wanted.toByte().toInt())) wanted
+        else modes.firstOrNull()
     }
 
     private fun startSession(device: CameraDevice) {
         val surface = reader?.surface ?: return
         val req = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
             addTarget(surface)
-            set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+            // 端末が受け付けるモードだけを指定する。対応していない値を渡すと
+            // 撮影要求ごと蹴られて、背面の見張りが丸ごと死ぬ。
+            afMode?.let { set(CaptureRequest.CONTROL_AF_MODE, it) }
         }
         @Suppress("DEPRECATION")
         device.createCaptureSession(
@@ -244,12 +310,13 @@ class EyeService : Service() {
                     try {
                         s.setRepeatingRequest(req.build(), null, handler)
                     } catch (e: Exception) {
-                        Log.e(TAG, "撮影を開始できない", e); stopSelf()
+                        Log.e(TAG, "撮影を開始できない", e)
+                        failed("カメラの撮影を開始できませんでした")
                     }
                 }
 
                 override fun onConfigureFailed(s: CameraCaptureSession) {
-                    Log.e(TAG, "セッションを構成できない"); stopSelf()
+                    failed("カメラを構成できませんでした")
                 }
             },
             handler
@@ -270,10 +337,11 @@ class EyeService : Service() {
 
         try {
             // 前面カメラなので鏡像だが、目の開閉の判定に左右の別は要らない。
-            val input = InputImage.fromMediaImage(image, 270)
+            val input = InputImage.fromMediaImage(image, sensorOrientation)
             det.process(input)
                 .addOnSuccessListener { faces ->
                     val f = faces.firstOrNull()
+                    logReading(f != null, f?.leftEyeOpenProbability, f?.rightEyeOpenProbability)
                     sink?.invoke(
                         f != null,
                         f?.leftEyeOpenProbability?.toDouble(),
@@ -288,6 +356,24 @@ class EyeService : Service() {
         } catch (e: Exception) {
             Log.w(TAG, "フレームを扱えない", e)
             image.close(); busy = false
+        }
+    }
+
+    /**
+     * 背面でも本当に見続けているかを、あとから logcat で確かめられるようにする。
+     * 毎フレーム出すとログが溢れて肝心の行が流れるので 2 秒に 1 行だけ。
+     * `adb logcat -s EyeService` で追える。
+     */
+    private var lastLogAt = 0L
+
+    private fun logReading(face: Boolean, left: Float?, right: Float?) {
+        val now = System.currentTimeMillis()
+        if (now - lastLogAt < 2000L) return
+        lastLogAt = now
+        if (!face) {
+            Log.d(TAG, "解析中 顔なし")
+        } else {
+            Log.d(TAG, "解析中 目の開き 左=$left 右=$right")
         }
     }
 
