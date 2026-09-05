@@ -48,6 +48,14 @@
              ⚠️ Android 14 以降、camera 型のサービスは「アプリが画面に出ている間」
              にしか開始できない。開始は必ずユーザーが「検知を開始」を押した
              その場で行うこと。バックグラウンドから起こそうとすると失敗する。 -->
+        <!-- 自前の見張りサービス。Camera2 を Service 側で開くことで、
+             Activity のライフサイクルから外れて背面でも動き続ける。 -->
+        <service
+            android:name=".EyeService"
+            android:foregroundServiceType="camera"
+            android:exported="false"
+            android:stopWithTask="true"/>
+
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="camera|microphone"

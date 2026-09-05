@@ -93,4 +93,11 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // 背面でも瞼を見続けるための自前実装で使う。
+    // Flutter の camera プラグインは CameraX を Activity のライフサイクルに
+    // 縛るため、画面を離れるとカメラを手放してしまう。そこで常駐サービス側で
+    // Camera2 を直接開き、ML Kit も native で回す。
+    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("androidx.core:core-ktx:1.13.1")
 }
