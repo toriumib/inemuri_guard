@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart'
         debugPrint,
         defaultTargetPlatform,
         TargetPlatform,
+        visibleForTesting,
         WriteBuffer;
 import 'package:flutter/widgets.dart' show Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -76,7 +77,22 @@ class DrowsinessDetector extends ChangeNotifier {
   static const _perclosCloseThreshold = 0.2; // "mostly closed" cutoff
   static const _perclosAlarmRatio = 0.15; // validated in PERCLOS literature
   static const _perclosMinSamples = 30;
+
+  /// PERCLOS が鳴らしてよくなるまでに必要な、**実際に経過した時間**。
+  ///
+  /// ここを「集まったサンプル数」だけで見ていたのが、しきい値を10秒に
+  /// してもすぐ鳴っていた原因だった。解析は約6回/秒なので 30 サンプルは
+  /// **5秒ぶん**にしかならず、起動5秒後に1秒目を閉じただけで
+  /// 6/30 = 0.2 ≥ 0.15 となって鳴っていた。
+  /// PERCLOS は「直近1分のうち何割を閉じていたか」であって、
+  /// 「直近5秒のうち何割か」ではない。1分ぶん貯まるまでは判断しない。
+  static const _perclosWarmUp = Duration(seconds: _perclosWindowSeconds);
   double perclos = 0;
+
+  /// 現在時刻の取り出し口。テストで1分の経過を作るためだけに差し替える。
+  /// 本番では常に [DateTime.now]。
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
 
   // Eyelid closure plays out over seconds, so there is nothing to gain from
   // running ML Kit at the camera's full frame rate — and plenty to lose,
@@ -320,7 +336,7 @@ class DrowsinessDetector extends ChangeNotifier {
     closedFor = Duration.zero;
     _perclosWindow.clear();
     perclos = 0;
-    _suppressUntil = DateTime.now().add(const Duration(minutes: 3));
+    _suppressUntil = clock().add(const Duration(minutes: 3));
     notifyListeners();
   }
 
@@ -329,6 +345,12 @@ class DrowsinessDetector extends ChangeNotifier {
   /// **Flutter 側のカメラと native の Camera2 の両方がここを通る。**
   /// しきい値も PERCLOS もここにしか無い。二か所に同じ判断を書くと、
   /// 必ず片方だけ直して食い違うため。
+  /// カメラ無しで判定だけを試すための入口。実機のカメラ2経路と
+  /// まったく同じ [_ingest] を通る（別の道を用意すると、直したつもりの
+  /// 判定がテストでしか通らなくなる）。
+  @visibleForTesting
+  void ingestForTest(double raw) => _ingest(raw);
+
   void _ingest(double raw) {
     _smoothingWindow.add(raw);
     if (_smoothingWindow.length > _smoothingSize) {
@@ -339,7 +361,7 @@ class DrowsinessDetector extends ChangeNotifier {
     history.add(eyeOpenness);
     if (history.length > historyMax) history.removeAt(0);
 
-    final now = DateTime.now();
+    final now = clock();
     final suppressed = _suppressUntil != null && now.isBefore(_suppressUntil!);
     final wasAlarming = alarmFiring;
 
@@ -374,12 +396,27 @@ class DrowsinessDetector extends ChangeNotifier {
       }
     }
 
-    if (!alarmFiring &&
-        (closedFor >= closedThreshold ||
-            (!suppressed &&
-                _perclosWindow.length >= _perclosMinSamples &&
-                perclos >= _perclosAlarmRatio))) {
-      alarmFiring = true;
+    // 1分ぶん貯まったか。貯まるまでの割合はまだ意味を持たない。
+    final span = _perclosWindow.isEmpty
+        ? Duration.zero
+        : now.difference(_perclosWindow.first.time);
+    final perclosReady =
+        span >= _perclosWarmUp && _perclosWindow.length >= _perclosMinSamples;
+
+    if (!alarmFiring) {
+      final byClosure = closedFor >= closedThreshold;
+      final byPerclos =
+          !suppressed && perclosReady && perclos >= _perclosAlarmRatio;
+      if (byClosure || byPerclos) {
+        alarmFiring = true;
+        if (byPerclos) {
+          // 一度 PERCLOS で鳴らしたら、その1分ぶんは使い切ったものとして
+          // 捨てる。残したままだと、目を開けて止まった直後にまだ高いままの
+          // 割合でもう一度鳴り、鳴りっぱなしに見える。
+          _perclosWindow.clear();
+          perclos = 0;
+        }
+      }
     }
     // 背面では UI が居ないので、鳴らす判断の変化だけは必ず通す。
     _notify(force: alarmFiring != wasAlarming);
