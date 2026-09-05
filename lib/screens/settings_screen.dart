@@ -584,8 +584,12 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
                 border: Border.all(color: c.border),
               ),
               child: Text(
-                '見ているのは「どのアプリから来たか」だけです。'
-                '本文も件名も読んでいませんし、どこにも送らず保存もしません。',
+                nudge.senderFilter.isEmpty
+                    ? '見ているのは「どのアプリから来たか」だけです。'
+                          '本文も件名も読んでいませんし、どこにも送らず保存もしません。'
+                    : '差出人を登録しているあいだは、一致するかを調べるために'
+                          '通知の件名と本文を端末の中だけで照合します。'
+                          '読んだ内容はどこにも送らず、保存もログにも残しません。',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontSize: 12),
@@ -613,6 +617,10 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
                   child: const Text('通知へのアクセスを許可する'),
                 ),
               ),
+            if (nudge.enabled) ...[
+              const Divider(height: 26),
+              _SenderFilterField(nudge: nudge),
+            ],
             if (nudge.lastApp != null)
               Text(
                 '直近: ${nudge.lastApp} の通知で起こしました',
@@ -621,6 +629,80 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// 差出人・件名の絞り込み。
+///
+/// 「上司のアドレスから来たときだけ起こしてほしい」に応えるための欄。
+/// 空のままなら絞り込まない（対象アプリの通知すべてで起こす）ので、
+/// 通知の中身を読む必要も無くなる。既定は空。
+class _SenderFilterField extends StatefulWidget {
+  final NudgeService nudge;
+  const _SenderFilterField({required this.nudge});
+
+  @override
+  State<_SenderFilterField> createState() => _SenderFilterFieldState();
+}
+
+class _SenderFilterFieldState extends State<_SenderFilterField> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.nudge.senderFilter.join(', '),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    // 半角カンマ・全角読点・改行のどれで区切っても受ける。
+    widget.nudge.setSenderFilter(
+      _controller.text.split(RegExp(r'[,、\n]')),
+    );
+    FocusScope.of(context).unfocus();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _controller.text.trim().isEmpty
+              ? '絞り込みを外しました。対象アプリの通知すべてで起こします。'
+              : '登録しました。一致した通知だけで起こします。',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('この相手のときだけ起こす', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 2),
+        Text(
+          'メールアドレスや名前を入れると、それを含む通知だけで起こします。'
+          'カンマ区切りで複数登録できます。空にすると絞り込みません。',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _controller,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+            hintText: 'bucho@example.com, 山田',
+          ),
+          onSubmitted: (_) => _save(),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton(onPressed: _save, child: const Text('登録')),
+        ),
+      ],
     );
   }
 }

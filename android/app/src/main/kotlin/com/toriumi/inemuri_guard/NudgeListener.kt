@@ -3,6 +3,7 @@ package com.toriumi.inemuri_guard
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.app.Notification
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -19,8 +20,16 @@ import android.util.Log
  *
  * ## 断っておくこと
  *
- * 通知の中身は**読むだけで、どこにも送らないし保存もしない**。
- * 見ているのは「どのアプリから来たか」だけで、本文もタイトルも使っていない。
+ * 通知の中身は**どこにも送らないし保存もしない**。端末の中だけで見て、
+ * 起こすかどうかを決めたらその場で捨てる。
+ *
+ * ⚠️ 差出人の絞り込み（[senderFilter]）を設定した場合に限り、
+ * 通知の**タイトルと本文を照合に使う**。「このメールアドレスから届いたときだけ
+ * 起こす」を実現するには、届いた通知の文字を見る以外に方法がないため。
+ * 絞り込みが空のときは、これまでどおり「どのアプリから来たか」しか見ない。
+ * 照合はすべて端末内で行い、一致したかどうかだけを Dart へ渡す。
+ * 本文そのものはアプリの外へ出ないし、ログにも残さない。
+ *
  * 通知アクセスは Android でもっとも強い権限のひとつなので、
  * 必要最小限しか触らない。
  *
@@ -50,6 +59,14 @@ class NudgeListener : NotificationListenerService() {
         @Volatile
         var enabled: Boolean = false
 
+        /**
+         * 差出人・件名の絞り込み。空なら絞り込まない（対象アプリの通知すべてで起こす）。
+         * 「部長のアドレスからのメールだけ起こしてほしい」に応えるためのもの。
+         * どれか一つでも通知の文字に含まれていれば起こす。
+         */
+        @Volatile
+        var senderFilter: List<String> = emptyList()
+
         /** 通知アクセスが許可されているか。 */
         fun isEnabled(context: Context): Boolean {
             val flat = Settings.Secure.getString(
@@ -74,6 +91,7 @@ class NudgeListener : NotificationListenerService() {
         if (!enabled) return
         val pkg = sbn?.packageName ?: return
         // 「なぜ鳴らないのか」を追えるようにしておく。対象外も含めて残す。
+        // ⚠️ 出すのはパッケージ名だけ。通知の中身はログに残さない。
         Log.d(TAG, "通知を受け取った: $pkg")
         val label = WATCHED[pkg] ?: return
 
@@ -82,7 +100,34 @@ class NudgeListener : NotificationListenerService() {
         // 進行中の通知（音楽再生や同期中など）は「呼ばれた」ではない。
         if (sbn.isOngoing) return
 
+        if (!matchesFilter(sbn)) {
+            Log.d(TAG, "対象アプリだが絞り込みに一致しない: $label")
+            return
+        }
+
         Log.d(TAG, "起こす対象の通知: $label")
         sink?.invoke(label)
+    }
+
+    /**
+     * 絞り込みに一致するか。空なら常に true（＝アプリ単位でしか見ない）。
+     *
+     * 照合はここだけで完結し、読んだ文字はこのメソッドの外へ出さない。
+     * 返すのは真偽値だけ。
+     */
+    private fun matchesFilter(sbn: StatusBarNotification): Boolean {
+        val needles = senderFilter
+        if (needles.isEmpty()) return true
+        val extras = sbn.notification?.extras ?: return false
+        val hay = buildString {
+            append(extras.getCharSequence(Notification.EXTRA_TITLE) ?: "")
+            append(' ')
+            append(extras.getCharSequence(Notification.EXTRA_TEXT) ?: "")
+            append(' ')
+            append(extras.getCharSequence(Notification.EXTRA_SUB_TEXT) ?: "")
+            append(' ')
+            append(extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: "")
+        }.lowercase()
+        return needles.any { hay.contains(it.trim().lowercase()) }
     }
 }
