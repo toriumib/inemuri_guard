@@ -43,7 +43,7 @@ class DrowsinessDetector extends ChangeNotifier {
   DetectorState state = DetectorState.idle;
   double eyeOpenness = 1.0; // 0 = fully closed, 1 = fully open (smoothed)
   Duration closedFor = Duration.zero;
-  Duration closedThreshold = const Duration(seconds: 10);
+  Duration closedThreshold = const Duration(seconds: 5);
   double openThreshold = 0.35;
   bool alarmFiring = false;
   bool noFaceSeen = false;
@@ -51,6 +51,14 @@ class DrowsinessDetector extends ChangeNotifier {
   /// 背面に回っていてカメラが取り上げられている状態。
   /// 「検知中」と表示したまま実際は何も見ていない、を避けるために持つ。
   bool cameraPausedInBackground = false;
+
+  /// 背面カメラで見張るか。車のスタンドに載せて運転席へ向けるときに使う。
+  /// 見張っている最中に変えても、次に開き直したときから効く。
+  bool useBackCamera = false;
+
+  /// 背面での見張りが続けられなくなった理由。表示して隠さないために持つ。
+  /// カメラを開けない端末があっても「検知中」と嘘をつかない。
+  String? backgroundFailure;
 
   final List<double> history = [];
   static const historyMax = 90;
@@ -96,8 +104,11 @@ class DrowsinessDetector extends ChangeNotifier {
     notifyListeners();
     try {
       final cameras = await availableCameras();
+      final wanted = useBackCamera
+          ? CameraLensDirection.back
+          : CameraLensDirection.front;
       final front = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == wanted,
         orElse: () => cameras.first,
       );
       final controller = CameraController(
@@ -127,9 +138,18 @@ class DrowsinessDetector extends ChangeNotifier {
       // 持っているので触らせない（取得は背面に入る直前の acquire で行う）。
       // Android 14 は camera 型の前景サービスを背面から開始できないため、
       // 前面にいるこの瞬間に前景化しておく必要がある。
+      backgroundFailure = null;
       await NativeEye.start(
         holder: 'eye',
         notificationText: '動作中',
+        useBackCamera: useBackCamera,
+        onFailed: (message) {
+          // 背面での見張りが死んだ。黙って「検知中」を出し続けるより、
+          // 見張れていないと言うほうがましなので、そのまま画面に出す。
+          backgroundFailure = message;
+          cameraPausedInBackground = true;
+          notifyListeners();
+        },
         onReading: (face, l, r) {
           if (!face) {
             noFaceSeen = true;
@@ -154,6 +174,7 @@ class DrowsinessDetector extends ChangeNotifier {
     await ScreenWake.release(_wakeKey);
     alarmFiring = false;
     noFaceSeen = false;
+    backgroundFailure = null;
     final controller = _controller;
     _controller = null;
     if (controller != null) {
@@ -176,6 +197,18 @@ class DrowsinessDetector extends ChangeNotifier {
 
   void setThresholdSeconds(int seconds) {
     closedThreshold = Duration(seconds: seconds);
+  }
+
+  /// 前面／背面の切り替え。見張っている最中なら、その場で開き直す。
+  Future<void> setUseBackCamera(bool value) async {
+    if (useBackCamera == value) return;
+    useBackCamera = value;
+    if (state == DetectorState.watching) {
+      await stop();
+      await start();
+    } else {
+      notifyListeners();
+    }
   }
 
   /// Android reclaims the camera whenever the app leaves the foreground, and
@@ -235,7 +268,7 @@ class DrowsinessDetector extends ChangeNotifier {
     }
     // Flutter 側が手放したあとで取りにいく。カメラは同時に一つしか
     // 開けないので、順番を逆にすると native 側が開けずに失敗する。
-    await NativeEye.acquire();
+    await NativeEye.acquire(useBackCamera: useBackCamera);
     notifyListeners();
   }
 
@@ -256,8 +289,11 @@ class DrowsinessDetector extends ChangeNotifier {
   Future<void> _reopenFlutterCamera() async {
     try {
       final cameras = await availableCameras();
+      final wanted = useBackCamera
+          ? CameraLensDirection.back
+          : CameraLensDirection.front;
       final front = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == wanted,
         orElse: () => cameras.first,
       );
       final controller = CameraController(

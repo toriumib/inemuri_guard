@@ -88,9 +88,19 @@ class BreathingDetector extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 背面に回ってもマイクが生きているかを、あとから logcat で確かめるため。
+  /// 毎サンプル出すと流れてしまうので 2 秒に 1 行だけ。
+  /// `adb logcat -s flutter | grep マイク` で追える。
+  DateTime? _lastLogAt;
+
   void _onReading(NoiseReading reading) {
     final now = DateTime.now();
     currentDb = reading.meanDecibel.isFinite ? reading.meanDecibel : 0;
+    if (_lastLogAt == null ||
+        now.difference(_lastLogAt!) >= const Duration(seconds: 2)) {
+      _lastLogAt = now;
+      debugPrint('マイク受信中 ${currentDb.toStringAsFixed(1)}dB');
+    }
     _samples.add(_Sample(now, currentDb));
     final cutoff = now.subtract(const Duration(seconds: _windowSeconds));
     _samples.removeWhere((s) => s.time.isBefore(cutoff));

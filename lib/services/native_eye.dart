@@ -35,10 +35,10 @@ class NativeEye {
   /// サービス自体は [start] で前面にいるうちに前景化してある。
   /// Android 14 は camera 型の前景サービスを背面から**開始**できないので、
   /// 開始と取得を分けてある。ここを一つにすると SecurityException で落ちる。
-  static Future<void> acquire() async {
+  static Future<void> acquire({bool useBackCamera = false}) async {
     if (!isSupported || !_running) return;
     try {
-      await _method.invokeMethod('acquire');
+      await _method.invokeMethod('acquire', {'back': useBackCamera});
     } catch (e) {
       debugPrint('NativeEye could not acquire: $e');
     }
@@ -48,7 +48,7 @@ class NativeEye {
   static Future<void> release() async {
     if (!isSupported || !_running) return;
     try {
-      await _method.invokeMethod('release');
+      await _method.invokeMethod('release', {'back': false});
     } catch (e) {
       debugPrint('NativeEye could not release: $e');
     }
@@ -62,17 +62,22 @@ class NativeEye {
   static Future<void> start({
     required String holder,
     String notificationText = '動作中',
+    bool useBackCamera = false,
     void Function(bool face, double? left, double? right)? onReading,
+    void Function(String message)? onFailed,
   }) async {
     if (!isSupported) return;
     _holders.add(holder);
     if (_running) {
-      if (onReading != null) _attach(onReading);
+      if (onReading != null) _attach(onReading, onFailed);
       return;
     }
     try {
-      if (onReading != null) _attach(onReading);
-      await _method.invokeMethod('start', {'text': notificationText});
+      if (onReading != null) _attach(onReading, onFailed);
+      await _method.invokeMethod('start', {
+        'text': notificationText,
+        'back': useBackCamera,
+      });
       _running = true;
     } catch (e) {
       // 権限が無い・前面にいない等。前面にいる間は Flutter 側のカメラで
@@ -84,10 +89,18 @@ class NativeEye {
 
   static void _attach(
     void Function(bool face, double? left, double? right) onReading,
+    void Function(String message)? onFailed,
   ) {
     _sub?.cancel();
     _sub = _events.receiveBroadcastStream().listen((e) {
       if (e is! Map) return;
+      // 見張れなくなった知らせ。黙って止まるより、止まったと言うほうがよい。
+      final failure = e['error'];
+      if (failure is String) {
+        _running = false;
+        onFailed?.call(failure);
+        return;
+      }
       onReading(
         e['face'] == true,
         (e['left'] as num?)?.toDouble(),

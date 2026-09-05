@@ -24,6 +24,8 @@ class StatsService extends ChangeNotifier {
   static const _kLog = 'stats_log';
   static const _kAdsRemoved = 'ads_removed';
   static const _kShowCameraPreview = 'show_camera_preview';
+  static const _kUseBackCamera = 'use_back_camera';
+  static const _kEyeThresholdSeconds = 'eye_threshold_seconds';
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
@@ -35,6 +37,13 @@ class StatsService extends ChangeNotifier {
   int napsAllTime = 0;
   bool adsRemoved = false;
   bool showCameraPreview = true;
+
+  /// 背面カメラで見張るか。車のスタンドに載せて運転席へ向けるときに使う。
+  /// 既定は前面（机の上に置いて自分に向ける、いちばん多い使い方）。
+  bool useBackCamera = false;
+
+  /// 何秒目を閉じ続けたら鳴らすか。選んだ値が次の起動でも残るように持つ。
+  int eyeThresholdSeconds = 5;
   bool watchBridge = true;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
@@ -61,6 +70,8 @@ class StatsService extends ChangeNotifier {
     }
     adsRemoved = prefs.getBool(_kAdsRemoved) ?? false;
     showCameraPreview = prefs.getBool(_kShowCameraPreview) ?? true;
+    useBackCamera = prefs.getBool(_kUseBackCamera) ?? false;
+    eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
@@ -126,6 +137,20 @@ class StatsService extends ChangeNotifier {
     showCameraPreview = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kShowCameraPreview, value);
+    notifyListeners();
+  }
+
+  Future<void> setUseBackCamera(bool value) async {
+    useBackCamera = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kUseBackCamera, value);
+    notifyListeners();
+  }
+
+  Future<void> setEyeThresholdSeconds(int value) async {
+    eyeThresholdSeconds = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kEyeThresholdSeconds, value);
     notifyListeners();
   }
 
