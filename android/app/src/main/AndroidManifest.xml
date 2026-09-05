@@ -52,12 +52,6 @@
              Activity のライフサイクルから外れて背面でも動き続ける。 -->
         <service
             android:name=".EyeService"
-            android:foregroundServiceType="camera"
-            android:exported="false"
-            android:stopWithTask="true"/>
-
-        <service
-            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="camera|microphone"
             android:exported="false"
             android:stopWithTask="true"/>

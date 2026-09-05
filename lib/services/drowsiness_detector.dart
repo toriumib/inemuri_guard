@@ -11,7 +11,6 @@ import 'package:flutter/widgets.dart' show Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'native_eye.dart';
 import 'screen_wake.dart';
-import 'watch_service.dart';
 
 enum DetectorState { idle, starting, watching, denied, alarming }
 
@@ -124,12 +123,12 @@ class DrowsinessDetector extends ChangeNotifier {
       await ScreenWake.acquire(_wakeKey);
       // 常駐サービスはここで起こす。ユーザーが開始を押した直後＝アプリが
       // 前面にいるこの瞬間しか、Android 14 以降は camera 型を開始できない。
-      await WatchService.start();
       // native の見張りサービスも**ここで**起こす。カメラはまだ Flutter 側が
       // 持っているので触らせない（取得は背面に入る直前の acquire で行う）。
       // Android 14 は camera 型の前景サービスを背面から開始できないため、
       // 前面にいるこの瞬間に前景化しておく必要がある。
       await NativeEye.start(
+        holder: 'eye',
         notificationText: '動作中',
         onReading: (face, l, r) {
           if (!face) {
@@ -151,8 +150,7 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
-    await NativeEye.stop();
-    await WatchService.stop();
+    await NativeEye.stop('eye');
     await ScreenWake.release(_wakeKey);
     alarmFiring = false;
     noFaceSeen = false;
@@ -197,12 +195,8 @@ class DrowsinessDetector extends ChangeNotifier {
       await _handOverToNative();
       return;
     }
-    if (WatchService.isRunning) {
-      cameraPausedInBackground = true;
-      WatchService.setText('画面を開くと瞼の検知が再開します');
-      notifyListeners();
-      return;
-    }
+    // native 経路が使えない端末（権限を断られた等）だけ、従来どおり畳んで
+    // 復帰時に張り直す。壊れたカメラを抱えたままにするよりよい。
     // サービスを起こせなかった端末（権限を断られた等）だけ、従来どおり
     // 畳んで復帰時に張り直す。壊れたカメラを抱えたままにするよりよい。
     _resumeWhenForegrounded = true;
@@ -217,7 +211,6 @@ class DrowsinessDetector extends ChangeNotifier {
     if (cameraPausedInBackground) {
       // CameraX が自分で繋ぎ直すので、こちらは表示を戻すだけでよい。
       cameraPausedInBackground = false;
-      WatchService.setText('動作中');
       notifyListeners();
     }
     if (!_resumeWhenForegrounded) return;

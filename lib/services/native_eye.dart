@@ -22,6 +22,11 @@ class NativeEye {
   static bool _running = false;
   static bool get isRunning => _running;
 
+  /// サービスを必要としている機能。瞼(カメラ)と寝息(マイク)は別々に
+  /// 開始・停止できるので、片方を止めたときにもう片方の背面動作まで
+  /// 巻き添えで止まらないよう、保持者を数える。
+  static final Set<String> _holders = {};
+
   /// native 経路が使えるか。Android 以外では常に false。
   static bool get isSupported =>
       defaultTargetPlatform == TargetPlatform.android;
@@ -52,32 +57,49 @@ class NativeEye {
   /// 目の開き具合が届くたびに呼ばれる。
   /// [face] が false のときは顔が映っていない（離席と睡眠は区別できないので、
   /// 呼び出し側で鳴らさない判断をすること）。
+  /// [holder] はこのサービスを必要としている機能の名前（'eye' / 'breath'）。
+  /// [onReading] は瞼の値が要る側だけ渡す。
   static Future<void> start({
-    required String notificationText,
-    required void Function(bool face, double? left, double? right) onReading,
+    required String holder,
+    String notificationText = '動作中',
+    void Function(bool face, double? left, double? right)? onReading,
   }) async {
-    if (!isSupported || _running) return;
+    if (!isSupported) return;
+    _holders.add(holder);
+    if (_running) {
+      if (onReading != null) _attach(onReading);
+      return;
+    }
     try {
-      _sub = _events.receiveBroadcastStream().listen((e) {
-        if (e is! Map) return;
-        onReading(
-          e['face'] == true,
-          (e['left'] as num?)?.toDouble(),
-          (e['right'] as num?)?.toDouble(),
-        );
-      }, onError: (Object err) => debugPrint('NativeEye stream error: $err'));
-
+      if (onReading != null) _attach(onReading);
       await _method.invokeMethod('start', {'text': notificationText});
       _running = true;
     } catch (e) {
       // 権限が無い・前面にいない等。前面にいる間は Flutter 側のカメラで
       // 動くので、ここで落とさない。
       debugPrint('NativeEye could not start: $e');
-      await stop();
+      await stop(holder);
     }
   }
 
-  static Future<void> stop() async {
+  static void _attach(
+    void Function(bool face, double? left, double? right) onReading,
+  ) {
+    _sub?.cancel();
+    _sub = _events.receiveBroadcastStream().listen((e) {
+      if (e is! Map) return;
+      onReading(
+        e['face'] == true,
+        (e['left'] as num?)?.toDouble(),
+        (e['right'] as num?)?.toDouble(),
+      );
+    }, onError: (Object err) => debugPrint('NativeEye stream error: $err'));
+  }
+
+  static Future<void> stop(String holder) async {
+    _holders.remove(holder);
+    // まだ誰かが使っているなら、サービスは落とさない。
+    if (_holders.isNotEmpty) return;
     await _sub?.cancel();
     _sub = null;
     if (!isSupported) {
