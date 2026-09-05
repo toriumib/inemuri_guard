@@ -80,7 +80,11 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                     NudgeListener.enabled = call.argument<Boolean>("on") ?: false
                     result.success(true)
                 }
-                "nudgeApps" -> result.success(NudgeListener.WATCHED.values.toList())
+                // 電話アプリは端末ごとに違うので同じ名前を複数のパッケージに
+                // 割り当ててある。並べて見せるときは重複を落とす。
+                "nudgeApps" -> result.success(
+                    NudgeListener.WATCHED.values.distinct()
+                )
                 "nudgeSetFilter" -> {
                     NudgeListener.senderFilter =
                         call.argument<List<String>>("filter") ?: emptyList()

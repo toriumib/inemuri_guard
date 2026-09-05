@@ -582,30 +582,30 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: c.accentAlert,
-                        foregroundColor: c.accentAlertInk,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () => nudge.answer(true),
-                      child: const Text('はい、起こしてほしい'),
-                    ),
+              // 横並びにすると日本語のラベルが入りきらず見切れる（実機で確認）。
+              // 縦に積んで全幅にしておけば、文字が伸びても崩れない。
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.accentAlert,
+                    foregroundColor: c.accentAlertInk,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () => nudge.answer(false),
-                      child: const Text('いらない'),
-                    ),
+                  onPressed: () => nudge.answer(true),
+                  child: const Text('はい、起こしてほしい'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                ],
+                  onPressed: () => nudge.answer(false),
+                  child: const Text('いらない'),
+                ),
               ),
             ],
           ),
