@@ -58,9 +58,33 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                     result.success(true)
                 }
                 "isRunning" -> result.success(EyeService.isRunning)
+
+                // ── 通知で起こす（Slack/Teams/メール） ──
+                "nudgeIsGranted" -> result.success(NudgeListener.isEnabled(context))
+                "nudgeOpenSettings" -> {
+                    NudgeListener.openSettings(context); result.success(true)
+                }
+                "nudgeSetEnabled" -> {
+                    NudgeListener.enabled = call.argument<Boolean>("on") ?: false
+                    result.success(true)
+                }
+                "nudgeApps" -> result.success(NudgeListener.WATCHED.values.toList())
                 else -> result.notImplemented()
             }
         }
+
+        // 通知で起こす側の流し口。目の値とは別の口にしてある。
+        EventChannel(messenger, "inemuri/nudge_events").setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(args: Any?, sink: EventChannel.EventSink?) {
+                    NudgeListener.sink = { label -> main.post { sink?.success(label) } }
+                }
+
+                override fun onCancel(args: Any?) {
+                    NudgeListener.sink = null
+                }
+            }
+        )
 
         events.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(args: Any?, sink: EventChannel.EventSink?) {

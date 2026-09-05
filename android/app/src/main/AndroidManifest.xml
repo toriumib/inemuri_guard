@@ -56,6 +56,18 @@
             android:exported="false"
             android:stopWithTask="true"/>
 
+        <!-- Slack/Teams/メールの通知で起こすための受け口。
+             通知アクセスはユーザーが設定画面で明示的に許可しないと有効に
+             ならない。中身は読むだけで、送信も保存もしない。 -->
+        <service
+            android:name=".NudgeListener"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
