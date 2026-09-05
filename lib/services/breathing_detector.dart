@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:noise_meter/noise_meter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'native_eye.dart';
+
 enum MicState { idle, starting, listening, denied }
 
 /// Heuristic breathing-rhythm sensor: not a medical device, and it does not
@@ -49,6 +51,10 @@ class BreathingDetector extends ChangeNotifier {
       alarmFiring = false;
       _meter = NoiseMeter();
       _sub = _meter!.noise.listen(_onReading, onError: (_) {});
+      // マイクだけで使う人もいる。前景サービスが無いと背面で AudioRecord が
+      // 止められるので、こちらでもサービスを掴んでおく（保持者は数えている
+      // ので、瞼検知を止めてもこちらの背面動作は生き残る）。
+      await NativeEye.start(holder: 'breath');
       state = MicState.listening;
     } catch (_) {
       state = MicState.denied;
@@ -57,6 +63,7 @@ class BreathingDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    await NativeEye.stop('breath');
     await _sub?.cancel();
     _sub = null;
     _meter = null;

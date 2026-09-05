@@ -141,9 +141,14 @@ class EyeService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             // Android 14 以降は型の申告が必須。camera を宣言しないと
             // SecurityException で落ちる。
+            // camera と microphone の両方を申告する。瞼検知(カメラ)と
+            // 寝息検知(マイク)のどちらを使っていても背面で止まらないように。
+            // ⚠️ 型は「開始時」に確定する。あとから足せないので、片方しか
+            //    使わない場合でも両方申告しておく。
             startForeground(
                 NOTIFICATION_ID, n,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             )
         } else {
             startForeground(NOTIFICATION_ID, n)
