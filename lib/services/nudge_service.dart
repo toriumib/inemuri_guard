@@ -107,8 +107,14 @@ class NudgeService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 問いに答えてもらった。「はい」なら有効にして、許可の画面まで開く。
-  /// 許可はユーザー自身がその画面で与えるしかないので、こちらは開くだけ。
+  /// 問いに答えてもらった。「はい」なら有効にする。
+  ///
+  /// ⚠️ ここから設定画面を**自動では開かない**。
+  /// 以前は許可が無いときに勝手に開いていたが、
+  /// 「検知すると謎に設定画面が開く」という指摘を受けて外した。
+  /// アプリが勝手に画面を切り替えるのは、それ自体が驚きになる。
+  /// 許可が要るときは、カード内の「通知へのアクセスを許可する」を
+  /// 押してもらう。押したときだけ [openSettings] が走る。
   Future<void> answer(bool yes) async {
     asked = true;
     final prefs = await SharedPreferences.getInstance();
@@ -116,7 +122,6 @@ class NudgeService extends ChangeNotifier {
     if (yes) {
       await setEnabled(true);
       await refreshGranted();
-      if (!granted) await openSettings();
     }
     notifyListeners();
   }
