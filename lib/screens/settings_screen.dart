@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/notification_service.dart';
+import '../services/nudge_service.dart';
 import '../services/purchase_service.dart';
 import '../services/stats_service.dart';
 import '../services/support_service.dart';
@@ -24,6 +25,8 @@ class SettingsScreen extends StatelessWidget {
         _RemoveAdsCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
         _WatchBridgeCard(stats: stats),
+        const SizedBox(height: 16),
+        const _NudgeCard(),
         const SizedBox(height: 16),
         const _SupportCard(),
         const SizedBox(height: 16),
@@ -511,6 +514,110 @@ class _AboutCard extends StatelessWidget {
               '医療機器ではありません。睡眠に関する不調が続く場合は医療機関にご相談ください。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Slack/Teams/メールの通知で起こす設定。
+///
+/// 通知アクセスは Android でもっとも強い権限のひとつなので、
+/// **何を見ていて何を見ていないか**を画面に明記してある。
+/// 許可はユーザーが設定画面で自分で与えるしかない（アプリからは開くだけ）。
+class _NudgeCard extends StatefulWidget {
+  const _NudgeCard();
+
+  @override
+  State<_NudgeCard> createState() => _NudgeCardState();
+}
+
+class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 設定画面で許可して戻ってきたら、状態を取り直す。
+    if (state == AppLifecycleState.resumed) {
+      context.read<NudgeService>().refreshGranted();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final nudge = context.watch<NudgeService>();
+    if (!nudge.isSupported) return const SizedBox.shrink();
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('呼ばれたら起こす', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              nudge.apps.isEmpty
+                  ? 'Slack や Teams、メールの通知が届いたら起こします。'
+                  : '${nudge.apps.join("・")} の通知が届いたら起こします。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: c.surface2,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: c.border),
+              ),
+              child: Text(
+                '見ているのは「どのアプリから来たか」だけです。'
+                '本文も件名も読んでいませんし、どこにも送らず保存もしません。',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: nudge.enabled,
+              onChanged: (v) => nudge.setEnabled(v),
+              title: const Text('通知で起こす'),
+              subtitle: Text(
+                nudge.granted ? '通知へのアクセスは許可されています' : '通知へのアクセスがまだ許可されていません',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: nudge.granted ? c.textDim : c.accentAlert,
+                ),
+              ),
+            ),
+            if (nudge.enabled && !nudge.granted)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: nudge.openSettings,
+                  child: const Text('通知へのアクセスを許可する'),
+                ),
+              ),
+            if (nudge.lastApp != null)
+              Text(
+                '直近: ${nudge.lastApp} の通知で起こしました',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
           ],
         ),
       ),

@@ -11,6 +11,7 @@ import 'services/breathing_detector.dart';
 import 'services/drowsiness_detector.dart';
 import 'services/nap_timer_service.dart';
 import 'services/notification_service.dart';
+import 'services/nudge_service.dart';
 import 'services/purchase_service.dart';
 import 'services/sleep_log_service.dart';
 import 'services/stats_service.dart';
@@ -44,10 +45,13 @@ Future<void> main() async {
     });
   }
 
+  final nudge = NudgeService();
+
   runApp(
     InemuriGuardApp(
       stats: stats,
       sleepLog: sleepLog,
+      nudge: nudge,
       adService: adService,
       notifications: notifications,
     ),
@@ -57,12 +61,14 @@ Future<void> main() async {
 class InemuriGuardApp extends StatelessWidget {
   final StatsService stats;
   final SleepLogService sleepLog;
+  final NudgeService nudge;
   final AdService adService;
   final NotificationService notifications;
   const InemuriGuardApp({
     super.key,
     required this.stats,
     required this.sleepLog,
+    required this.nudge,
     required this.adService,
     required this.notifications,
   });
@@ -73,6 +79,7 @@ class InemuriGuardApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: stats),
         ChangeNotifierProvider.value(value: sleepLog),
+        ChangeNotifierProvider.value(value: nudge),
         Provider.value(value: adService),
         Provider.value(value: notifications),
         ChangeNotifierProvider(create: (_) => AlarmService(notifications)),

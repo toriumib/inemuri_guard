@@ -7,6 +7,7 @@ import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/nap_timer_service.dart';
+import '../services/nudge_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
@@ -58,6 +59,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // 「呼ばれたら起こす」の購読はここで始める。通知が来たら、居眠り検知と
+    // 同じ鳴らし方（こっそりモードの段階的な強め方）に乗せる。
+    context.read<NudgeService>().load(
+      onNudge: (app) {
+        if (!mounted) return;
+        context.read<AlarmService>().start(reason: '$app の通知が届きました');
+      },
+    );
     final stats = context.read<StatsService>();
     if (!stats.adsRemoved) {
       _banner = context.read<AdService>().createBanner(
