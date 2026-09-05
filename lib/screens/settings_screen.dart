@@ -457,9 +457,13 @@ class _AboutCard extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('キャンセル'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(c, true), child: const Text('有効にする')),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('有効にする'),
+          ),
         ],
       ),
     );
@@ -467,16 +471,18 @@ class _AboutCard extends StatelessWidget {
     ctrl.dispose();
     if (ok != true || !context.mounted) return;
     if (input != _kDevPassphrase) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('合言葉が違います')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('合言葉が違います')));
       return;
     }
     // ⚠️ 動作確認・スクショ撮影中に広告が挟まらないようにするためだけの
     //    フラグ。課金の代わりにはならない（購入フローとは別経路）。
     await context.read<StatsService>().setAdsRemoved(true);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('開発者モードON：広告を消しました')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('開発者モードON：広告を消しました')));
   }
 
   @override
@@ -493,8 +499,10 @@ class _AboutCard extends StatelessWidget {
             //    ないので長押しにした）。
             GestureDetector(
               onLongPress: () => _askDevPassword(context),
-              child: Text('このアプリについて',
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'このアプリについて',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             const SizedBox(height: 8),
             Text(

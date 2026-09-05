@@ -224,6 +224,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (nap.phase == NapPhase.running) {
       return (StatusMode.warn, '仮眠タイマー', '${nap.minutes}分仮眠中');
     }
+    if (detector.cameraPausedInBackground &&
+        detector.state == DetectorState.watching) {
+      // 背面ではカメラが取り上げられている。復帰した瞬間にこの表示が
+      // 見えるので、何が起きていたのかが分かる。
+      return (StatusMode.warn, '居眠り検知', '画面を開くと再開します');
+    }
     if (detector.state == DetectorState.watching ||
         breathing.state == MicState.listening) {
       final eyeClosingIn = detector.closedThreshold.inSeconds;
