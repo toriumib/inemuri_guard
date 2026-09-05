@@ -42,6 +42,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         detector.handleAppPaused();
       case AppLifecycleState.resumed:
         detector.handleAppResumed();
+        // 通知アクセスの許可画面から戻ってきた場合をここでも拾う。
+        // 設定タブを開いていないと気づけない作りだと、許可したのに
+        // 効いていない状態のまま放置される。
+        context.read<NudgeService>().refreshGranted();
       case AppLifecycleState.inactive:
         break;
     }

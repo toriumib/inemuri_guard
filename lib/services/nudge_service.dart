@@ -82,6 +82,12 @@ class NudgeService extends ChangeNotifier {
   }
 
   /// OS 側の許可状態を取り直す。設定画面から戻ってきたときに呼ぶ。
+  ///
+  /// ⚠️ 取り直したら native 側へ**必ず伝え直す**こと。
+  /// native は「本人が使うと決めた かつ OS が許可している」ときだけ動く。
+  /// 「はい」を押した時点ではまだ許可が無いので false が伝わっており、
+  /// ここで伝え直さないと、許可画面で許可して戻ってきても永久に無反応の
+  /// ままになる（実機で確認）。
   Future<void> refreshGranted() async {
     if (!isSupported) return;
     try {
@@ -89,6 +95,7 @@ class NudgeService extends ChangeNotifier {
     } catch (_) {
       granted = false;
     }
+    await _push();
     notifyListeners();
   }
 
