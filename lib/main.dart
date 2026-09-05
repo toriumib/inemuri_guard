@@ -14,6 +14,7 @@ import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
 import 'services/sleep_log_service.dart';
 import 'services/stats_service.dart';
+import 'services/watch_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -30,6 +31,8 @@ Future<void> main() async {
   // MobileAds.initialize() が戻らなくなり、通知もUIも始動しないのを
   // エミュレータで確認した。広告は準備できたものから載る。
   unawaited(adService.init().catchError((_) {}));
+
+  WatchService.init();
 
   final notifications = NotificationService();
   await notifications.init();

@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- 画面を消しても・他のアプリを開いても見張りを続けるために要る。
+         Android 14 以降はサービスの「型」ごとに権限が分かれていて、
+         カメラを使い続けるなら FOREGROUND_SERVICE_CAMERA が必須。
+         これが無いと起動時に例外で落ちる。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
@@ -35,6 +42,18 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- 見張りを続けるための常駐サービス。
+             型に camera と microphone を両方書いているのは、瞼検知(カメラ)と
+             寝息検知(マイク)のどちらを使っていても止まらないようにするため。
+             ⚠️ Android 14 以降、camera 型のサービスは「アプリが画面に出ている間」
+             にしか開始できない。開始は必ずユーザーが「検知を開始」を押した
+             その場で行うこと。バックグラウンドから起こそうとすると失敗する。 -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="camera|microphone"
+            android:exported="false"
+            android:stopWithTask="true"/>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

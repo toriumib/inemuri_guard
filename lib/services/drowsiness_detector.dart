@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/widgets.dart' show Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'screen_wake.dart';
+import 'watch_service.dart';
 
 enum DetectorState { idle, starting, watching, denied, alarming }
 
@@ -41,6 +42,10 @@ class DrowsinessDetector extends ChangeNotifier {
   double openThreshold = 0.35;
   bool alarmFiring = false;
   bool noFaceSeen = false;
+
+  /// 背面に回っていてカメラが取り上げられている状態。
+  /// 「検知中」と表示したまま実際は何も見ていない、を避けるために持つ。
+  bool cameraPausedInBackground = false;
 
   final List<double> history = [];
   static const historyMax = 90;
@@ -111,6 +116,9 @@ class DrowsinessDetector extends ChangeNotifier {
       // tears the camera down, and detection dies silently — which breaks the
       // one thing this app is for: sitting on the desk watching you.
       await ScreenWake.acquire(_wakeKey);
+      // 常駐サービスはここで起こす。ユーザーが開始を押した直後＝アプリが
+      // 前面にいるこの瞬間しか、Android 14 以降は camera 型を開始できない。
+      await WatchService.start();
       state = DetectorState.watching;
     } catch (_) {
       state = DetectorState.denied;
@@ -120,6 +128,7 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    await WatchService.stop();
     await ScreenWake.release(_wakeKey);
     alarmFiring = false;
     noFaceSeen = false;
@@ -155,11 +164,31 @@ class DrowsinessDetector extends ChangeNotifier {
 
   Future<void> handleAppPaused() async {
     if (state != DetectorState.watching) return;
+    // 常駐サービスが動いていれば、背面に回っても Android はカメラを
+    // 取り上げない。ここで止めてしまうと「他のアプリを開いた瞬間に
+    // 見張りが終わる」という、この道具の一番の欠陥がそのまま残る。
+    if (WatchService.isRunning) {
+      // カメラは Android に取り上げられる。プロセスとマイクとアラームは
+      // 生きているが、瞼は見えなくなる。ここで「見張っています」の顔を
+      // し続けるのが一番たちが悪いので、状態にも通知にも出す。
+      cameraPausedInBackground = true;
+      WatchService.setText('画面を開くと瞼の検知が再開します');
+      notifyListeners();
+      return;
+    }
+    // サービスを起こせなかった端末（権限を断られた等）だけ、従来どおり
+    // 畳んで復帰時に張り直す。壊れたカメラを抱えたままにするよりよい。
     _resumeWhenForegrounded = true;
     await stop();
   }
 
   Future<void> handleAppResumed() async {
+    if (cameraPausedInBackground) {
+      // CameraX が自分で繋ぎ直すので、こちらは表示を戻すだけでよい。
+      cameraPausedInBackground = false;
+      WatchService.setText('動作中');
+      notifyListeners();
+    }
     if (!_resumeWhenForegrounded) return;
     _resumeWhenForegrounded = false;
     await start();
