@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-08T08:23:02.968Z",
+  "input": "AI generated open/closed eyes; Chromium fake camera",
+  "engine": "Actual production MediaPipe",
+  "reason": "起きて\n\n目が閉じていました\n\n止める",
+  "viewport": {
+    "width": 960,
+    "height": 900
+  },
+  "physicalIPhone": false
+}
