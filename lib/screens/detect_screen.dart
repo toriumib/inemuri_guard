@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +22,65 @@ class DetectScreen extends StatefulWidget {
 class _DetectScreenState extends State<DetectScreen> {
   bool _wasEyeAlarming = false;
   bool _wasBreathAlarming = false;
+  late final DrowsinessDetector _detector;
+  late final BreathingDetector _breathing;
+
+  @override
+  void initState() {
+    super.initState();
+    _detector = context.read<DrowsinessDetector>();
+    _breathing = context.read<BreathingDetector>();
+    _detector.addListener(_sensorChanged);
+    _breathing.addListener(_sensorChanged);
+    _sensorChanged();
+  }
+
+  void _sensorChanged() {
+    // Microtasks run even when Android stops scheduling UI frames.
+    // Read the latest state so stopping detection cancels a queued alarm.
+    scheduleMicrotask(() {
+      if (mounted) _syncAlarms();
+    });
+  }
+
+  @override
+  void dispose() {
+    _detector.removeListener(_sensorChanged);
+    _breathing.removeListener(_sensorChanged);
+    super.dispose();
+  }
+
+  void _syncAlarms() {
+    final detector = _detector;
+    final breathing = _breathing;
+    final alarm = context.read<AlarmService>();
+    final stats = context.read<StatsService>();
+    final sleepLog = context.read<SleepLogService>();
+
+    // React once per episode without depending on a widget rebuild.
+    if (detector.alarmFiring != _wasEyeAlarming) {
+      final firing = detector.alarmFiring;
+      _wasEyeAlarming = firing;
+      if (firing) {
+        alarm.start(reason: '目を閉じたままの状態を検知しました');
+        stats.bumpAlarm('目を閉じたままの状態を検知');
+        sleepLog.add(SleepEventType.detected, note: '目の開閉');
+      } else if (!breathing.alarmFiring) {
+        alarm.stop();
+      }
+    }
+    if (breathing.alarmFiring != _wasBreathAlarming) {
+      final firing = breathing.alarmFiring;
+      _wasBreathAlarming = firing;
+      if (firing) {
+        alarm.start(reason: '規則的な寝息のような音を検知しました');
+        stats.bumpAlarm('寝息のような音を検知');
+        sleepLog.add(SleepEventType.detected, note: '寝息');
+      } else if (!detector.alarmFiring) {
+        alarm.stop();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,37 +89,6 @@ class _DetectScreenState extends State<DetectScreen> {
     final breathing = context.watch<BreathingDetector>();
     final alarm = context.read<AlarmService>();
     final stats = context.watch<StatsService>();
-    final sleepLog = context.read<SleepLogService>();
-
-    // React to each sensor's own alarm edge — start/stop the shared audible
-    // alarm and log the event exactly once per episode. Deferred to after
-    // the frame since this build runs from the sensors' own notifyListeners.
-    if (detector.alarmFiring != _wasEyeAlarming) {
-      final firing = detector.alarmFiring;
-      _wasEyeAlarming = firing;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (firing) {
-          alarm.start(reason: '目を閉じたままの状態を検知しました');
-          stats.bumpAlarm('目を閉じたままの状態を検知');
-          sleepLog.add(SleepEventType.detected, note: '目の開閉');
-        } else if (!breathing.alarmFiring) {
-          alarm.stop();
-        }
-      });
-    }
-    if (breathing.alarmFiring != _wasBreathAlarming) {
-      final firing = breathing.alarmFiring;
-      _wasBreathAlarming = firing;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (firing) {
-          alarm.start(reason: '規則的な寝息のような音を検知しました');
-          stats.bumpAlarm('寝息のような音を検知');
-          sleepLog.add(SleepEventType.detected, note: '寝息');
-        } else if (!detector.alarmFiring) {
-          alarm.stop();
-        }
-      });
-    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
