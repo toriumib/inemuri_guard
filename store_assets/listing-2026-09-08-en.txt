@@ -1,0 +1,34 @@
+TITLE
+Drowsiness Guard: Camera Alerts
+
+SHORT DESCRIPTION
+Camera-based drowsiness alerts for desk work and study, plus a nap timer and log.
+
+FULL DESCRIPTION
+Nodding off while working or studying?
+Drowsiness Guard checks eyelid movement through your phone's camera and alerts you with sound and vibration when it detects signs of drowsiness.
+
+CAMERA-BASED ALERTS
+Prop up your phone, point the camera at your face and start detection. The app checks sustained eye closure and the proportion of time your eyes are closed. Adjust the closed-eye duration in settings.
+
+SOUND AND VIBRATION
+Get an alert that helps you notice an unexpected nod. If you use earphones, test your audio output and volume first: routing depends on your device and OS, and earphones-only playback is not guaranteed. Follow local camera and device rules at work, in class or on public transport.
+
+TAKE A TIMED NAP
+When you need rest, take it. Choose a 5-, 10-, 20- or 30-minute nap timer. References to nap research are included in the app.
+
+LOG AND REFLECT
+Record detected events or occasions when someone points out that you nodded off. Review time-of-day patterns in your on-device log. The sleep improvement guide includes references and advice on seeking medical help for persistent sleepiness; it does not diagnose or treat a condition.
+
+ON-DEVICE CAMERA PROCESSING
+Camera frames are processed on your device, not uploaded to a server for analysis. The app does not record camera video or microphone audio. No account is required. Ads and in-app purchases use network connections.
+
+TRY THE WEB VERSION
+A browser version is also available for computers and phones:
+https://inemuri.toriumis.com/en/
+Features and operating conditions differ between Web and Android.
+
+BEFORE YOU USE IT
+Dim lighting, glare, glasses and face position can cause missed or false alerts. This is not a medical device or a driving or hazardous-work safety product. If you feel sleepy while driving, stop somewhere safe and rest. Alerts are not a substitute for sleep. Seek medical advice if strong sleepiness persists.
+
+Free with ads. See the app for available in-app purchases.
