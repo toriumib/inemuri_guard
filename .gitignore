@@ -61,3 +61,5 @@ android/key.properties
 # Local debugging artifacts (adb screencaps etc.)
 /*.png
 /screenshots/
+/store_assets/promo_detection/raw/
+/store_assets/promo_detection/*.y4m
