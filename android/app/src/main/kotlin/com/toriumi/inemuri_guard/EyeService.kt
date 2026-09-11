@@ -66,8 +66,13 @@ class EyeService : Service() {
         private const val CHANNEL_ID = "eye_watch"
         private const val NOTIFICATION_ID = 4711
 
-        /** 解析の間隔。瞼の開閉は秒単位の現象なので、毎フレーム回す必要はない。 */
-        private const val MIN_FRAME_GAP_MS = 160L
+        /**
+         * 解析の間隔。瞼の開閉は秒単位の現象なので、毎フレーム回す必要はない。
+         * ACCURATE の解析は SHARP A105SH で 150〜255ms かかった（実測）。
+         * 160ms だと解析が間に合わず busy でフレームを捨てるだけなので、
+         * 最初から 250ms（4fps）にしておく。PERCLOS には十分で、発熱も減る。
+         */
+        private const val MIN_FRAME_GAP_MS = 250L
 
         /** Dart 側へ結果を渡す口。EyePlugin が差し込む。 */
         @Volatile
@@ -356,9 +361,11 @@ class EyeService : Service() {
         try {
             // 前面カメラなので鏡像だが、目の開閉の判定に左右の別は要らない。
             val input = InputImage.fromMediaImage(image, sensorOrientation)
+            val startedAt = System.currentTimeMillis()
             det.process(input)
                 .addOnSuccessListener { faces ->
                     val f = faces.firstOrNull()
+                    lastAnalysisMs = System.currentTimeMillis() - startedAt
                     logReading(f != null, f?.leftEyeOpenProbability, f?.rightEyeOpenProbability)
                     sink?.invoke(
                         f != null,
@@ -384,14 +391,18 @@ class EyeService : Service() {
      */
     private var lastLogAt = 0L
 
+    /** 直近1フレームの解析にかかった時間。ACCURATE が間隔（MIN_FRAME_GAP_MS）に
+     *  収まっているかを logcat で確かめるためのもの。 */
+    private var lastAnalysisMs = 0L
+
     private fun logReading(face: Boolean, left: Float?, right: Float?) {
         val now = System.currentTimeMillis()
         if (now - lastLogAt < 2000L) return
         lastLogAt = now
         if (!face) {
-            Log.d(TAG, "解析中 顔なし")
+            Log.d(TAG, "解析中 顔なし (${lastAnalysisMs}ms)")
         } else {
-            Log.d(TAG, "解析中 目の開き 左=$left 右=$right")
+            Log.d(TAG, "解析中 目の開き 左=$left 右=$right (${lastAnalysisMs}ms)")
         }
     }
 
