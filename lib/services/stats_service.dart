@@ -26,6 +26,7 @@ class StatsService extends ChangeNotifier {
   static const _kShowCameraPreview = 'show_camera_preview';
   static const _kUseBackCamera = 'use_back_camera';
   static const _kEyeThresholdSeconds = 'eye_threshold_seconds';
+  static const _kAutoStart = 'auto_start_detection';
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
@@ -44,6 +45,10 @@ class StatsService extends ChangeNotifier {
 
   /// 何秒目を閉じ続けたら鳴らすか。選んだ値が次の起動でも残るように持つ。
   int eyeThresholdSeconds = 5;
+
+  /// 開いた瞬間から検知を始めるか。机に置いて開くだけで見張りが始まるのが
+  /// この道具の使い方なので既定は ON。切りたい人のために設定に置く。
+  bool autoStartDetection = true;
   bool watchBridge = true;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
@@ -72,6 +77,7 @@ class StatsService extends ChangeNotifier {
     showCameraPreview = prefs.getBool(_kShowCameraPreview) ?? true;
     useBackCamera = prefs.getBool(_kUseBackCamera) ?? false;
     eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
+    autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
@@ -144,6 +150,13 @@ class StatsService extends ChangeNotifier {
     useBackCamera = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kUseBackCamera, value);
+    notifyListeners();
+  }
+
+  Future<void> setAutoStartDetection(bool value) async {
+    autoStartDetection = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAutoStart, value);
     notifyListeners();
   }
 

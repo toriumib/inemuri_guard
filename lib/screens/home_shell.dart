@@ -86,6 +86,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onLoaded: () => setState(() {}),
       );
     }
+    // 開いた瞬間から見張る。机に置いて開くだけで始まるのがこの道具の使い方。
+    // 初回はカメラの許可ダイアログが出る。断られたら denied になるだけで、
+    // 次回以降は「検知を開始」を押してもらう（毎回ダイアログを出し続けない）。
+    if (stats.autoStartDetection) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final detector = context.read<DrowsinessDetector>();
+        if (detector.state == DetectorState.idle) {
+          detector.setThresholdSeconds(stats.eyeThresholdSeconds);
+          detector.start();
+        }
+      });
+    }
   }
 
   @override

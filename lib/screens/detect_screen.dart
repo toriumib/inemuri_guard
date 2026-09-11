@@ -216,6 +216,14 @@ class _DetectScreenState extends State<DetectScreen> {
                       await detector.setUseBackCamera(v);
                     },
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('開いた瞬間から見張る'),
+                    subtitle: const Text('アプリを開くだけでカメラが始まります。'),
+                    value: stats.autoStartDetection,
+                    onChanged: (v) => stats.setAutoStartDetection(v),
+                  ),
                   if (detector.backgroundFailure != null) ...[
                     const SizedBox(height: 12),
                     // 見張れていないのに「検知中」と出したままにしない。
