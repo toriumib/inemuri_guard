@@ -112,9 +112,23 @@ class PomodoroService extends ChangeNotifier {
     pausedLeft = paused == null ? null : Duration(seconds: paused);
     // 起動し直したら、走っていた区間はもう終わっているかもしれない。
     syncFromClock();
-    if (isRunning) _startTicker();
+    if (isRunning) {
+      _startTicker();
+      // 強制終了やメーカーの省電力でプロセスが殺されると、OS の予約も
+      // 一緒に消えることがある（am force-stop で実機確認）。走っている
+      // なら張り直す。同じ id なので二重にはならない。
+      await _scheduleEnd();
+    }
     notifyListeners();
   }
+
+  Future<void> _scheduleEnd() => _scheduler.scheduleAt(
+    id: NotificationIds.pomodoro,
+    channel: NotificationChannels.pomodoro,
+    title: phase == PomoPhase.work ? '作業時間が終わりました' : '休憩が終わりました',
+    body: phase == PomoPhase.work ? '休憩に入りましょう。' : '次の作業へ。',
+    at: endsAt!,
+  );
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
@@ -160,13 +174,7 @@ class PomodoroService extends ChangeNotifier {
     pausedLeft = null;
     endsAt = clock().add(phaseLength);
     await ScreenWake.acquire(_wakeKey);
-    await _scheduler.scheduleAt(
-      id: NotificationIds.pomodoro,
-      channel: NotificationChannels.pomodoro,
-      title: next == PomoPhase.work ? '作業時間が終わりました' : '休憩が終わりました',
-      body: next == PomoPhase.work ? '休憩に入りましょう。' : '次の作業へ。',
-      at: endsAt!,
-    );
+    await _scheduleEnd();
     _startTicker();
     await _persist();
     notifyListeners();
@@ -188,13 +196,7 @@ class PomodoroService extends ChangeNotifier {
     endsAt = clock().add(pausedLeft!);
     pausedLeft = null;
     await ScreenWake.acquire(_wakeKey);
-    await _scheduler.scheduleAt(
-      id: NotificationIds.pomodoro,
-      channel: NotificationChannels.pomodoro,
-      title: phase == PomoPhase.work ? '作業時間が終わりました' : '休憩が終わりました',
-      body: phase == PomoPhase.work ? '休憩に入りましょう。' : '次の作業へ。',
-      at: endsAt!,
-    );
+    await _scheduleEnd();
     _startTicker();
     await _persist();
     notifyListeners();

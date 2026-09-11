@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/sleep_symptoms.dart';
 import '../services/sleep_log_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/sleep_time_card.dart';
 
 class LogScreen extends StatelessWidget {
   const LogScreen({super.key});
@@ -16,6 +17,8 @@ class LogScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         const _RecordCard(),
+        const SizedBox(height: 16),
+        const SleepTimeCard(),
         const SizedBox(height: 16),
         _PatternCard(log: log),
         const SizedBox(height: 16),
