@@ -203,7 +203,11 @@ class _DetectScreenState extends State<DetectScreen> {
                     title: const Text('背面カメラで見張る'),
                     subtitle: const Text(
                       '車のスタンドに載せて運転席へ向けるときに使います。'
-                      '机の上に置いて自分に向けるなら切ったままで大丈夫です。',
+                      '机の上に置いて自分に向けるなら切ったままで大丈夫です。\n'
+                      '車内では補助としてのみ。運転者の注意義務を代替するものではなく、'
+                      '見逃し・誤作動があります。運転中は端末を操作せず、確実に固定し、'
+                      '法令に従ってください。依拠による損害の責任は負いません'
+                      '（詳細は設定の「このアプリについて」）。',
                     ),
                     value: stats.useBackCamera,
                     onChanged: (v) async {
