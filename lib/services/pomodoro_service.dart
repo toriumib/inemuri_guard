@@ -56,6 +56,14 @@ class PomodoroService extends ChangeNotifier {
   /// 区間が終わったときに画面側へ知らせる口（音・振動・スナックバー）。
   void Function(PomoPhase finished)? onPhaseEnd;
 
+  /// アプリが前面にいるか。HomeShell のライフサイクルから入る。
+  ///
+  /// ⚠️ プロセスが生きたまま背面にいると Dart のタイマーも動き続ける。
+  /// そこで区間を終えて OS の予約を取り消してしまうと、**通知が一度も出ない**
+  /// （実機で 19:55 の予約が消え、何も鳴らなかった）。背面では予約を残して
+  /// OS に鳴らせる。前面なら画面側の合図に切り替えて予約を取り消す。
+  bool inForeground = true;
+
   /// テストで時間を進めるための差し替え口。本番は [DateTime.now]。
   @visibleForTesting
   DateTime Function() clock = DateTime.now;
@@ -232,13 +240,30 @@ class PomodoroService extends ChangeNotifier {
     } else {
       phase = PomoPhase.breakDone;
     }
-    // 前面で終わりを迎えた。予約した通知は要らない——画面側で合図する。
-    // 背面で終わっていた場合は通知がもう出ているので、取り消しても害はない。
-    unawaited(_scheduler.cancel(NotificationIds.pomodoro));
     unawaited(ScreenWake.release(_wakeKey));
     unawaited(_persist());
-    onPhaseEnd?.call(finished);
+    if (inForeground) {
+      // 前面で終わりを迎えた。画面側で合図するので予約した通知は要らない。
+      unawaited(_scheduler.cancel(NotificationIds.pomodoro));
+      onPhaseEnd?.call(finished);
+    }
+    // 背面なら何もしない。予約した通知が OS から出るのが合図。
+    // ここで preview 音を鳴らすと通知の音と二重になる。
     notifyListeners();
+  }
+
+  /// 前面に戻った。背面で終わっていた区間を拾い、出ていた通知は片づける。
+  void onForeground() {
+    inForeground = true;
+    syncFromClock();
+    if (!isRunning) {
+      // 終わった区間の通知がまだ通知欄に残っていれば、画面を見た時点で用済み。
+      unawaited(_scheduler.cancel(NotificationIds.pomodoro));
+    }
+  }
+
+  void onBackground() {
+    inForeground = false;
   }
 
   void _startTicker() {
