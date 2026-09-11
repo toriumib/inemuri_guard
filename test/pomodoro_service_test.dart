@@ -97,6 +97,18 @@ void main() {
     expect(q.formatted, '00:00', reason: 'マイナス表示にしない');
   });
 
+  test('起動し直したとき、まだ走っていれば予約を張り直す', () async {
+    await p.start();
+    // プロセスが殺されて OS の予約も消えた想定。
+    sched.scheduled.clear();
+    final later = _Clock()..now = clock.now.add(const Duration(minutes: 5));
+    final q = PomodoroService(sched)..clock = later.call;
+    await q.load();
+    expect(q.isRunning, isTrue);
+    expect(sched.scheduled[NotificationIds.pomodoro], q.endsAt,
+        reason: 'force-stop で予約が消えても、起動時に張り直す');
+  });
+
   test('リセットで最初に戻る', () async {
     await p.start();
     clock.advance(const Duration(minutes: 25));

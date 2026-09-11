@@ -7,6 +7,7 @@ import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../services/support_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pomodoro_card.dart';
 import '../widgets/ring_timer.dart';
 
 /// What each nap length did in Brooks & Lack (2006) — the study that compared
@@ -184,6 +185,8 @@ class _NapScreenState extends State<NapScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          const PomodoroCard(),
           const SizedBox(height: 16),
           const _EvidenceCard(),
         ],

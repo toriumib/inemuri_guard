@@ -9,11 +9,14 @@ import 'services/ad_service.dart';
 import 'services/alarm_service.dart';
 import 'services/breathing_detector.dart';
 import 'services/drowsiness_detector.dart';
+import 'services/hydration_service.dart';
 import 'services/nap_timer_service.dart';
 import 'services/notification_service.dart';
 import 'services/nudge_service.dart';
+import 'services/pomodoro_service.dart';
 import 'services/purchase_service.dart';
 import 'services/sleep_log_service.dart';
+import 'services/sleep_time_log_service.dart';
 import 'services/stats_service.dart';
 import 'theme/app_theme.dart';
 
@@ -47,10 +50,21 @@ Future<void> main() async {
 
   final nudge = NudgeService();
 
+  // 予約通知に頼る2つは、通知の初期化が終わってから。
+  final pomodoro = PomodoroService(notifications);
+  await pomodoro.load();
+  final hydration = HydrationService(notifications);
+  await hydration.load();
+  final sleepTime = SleepTimeLogService();
+  await sleepTime.load();
+
   runApp(
     InemuriGuardApp(
       stats: stats,
       sleepLog: sleepLog,
+      sleepTime: sleepTime,
+      pomodoro: pomodoro,
+      hydration: hydration,
       nudge: nudge,
       adService: adService,
       notifications: notifications,
@@ -61,6 +75,9 @@ Future<void> main() async {
 class InemuriGuardApp extends StatelessWidget {
   final StatsService stats;
   final SleepLogService sleepLog;
+  final SleepTimeLogService sleepTime;
+  final PomodoroService pomodoro;
+  final HydrationService hydration;
   final NudgeService nudge;
   final AdService adService;
   final NotificationService notifications;
@@ -68,6 +85,9 @@ class InemuriGuardApp extends StatelessWidget {
     super.key,
     required this.stats,
     required this.sleepLog,
+    required this.sleepTime,
+    required this.pomodoro,
+    required this.hydration,
     required this.nudge,
     required this.adService,
     required this.notifications,
@@ -79,6 +99,9 @@ class InemuriGuardApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: stats),
         ChangeNotifierProvider.value(value: sleepLog),
+        ChangeNotifierProvider.value(value: sleepTime),
+        ChangeNotifierProvider.value(value: pomodoro),
+        ChangeNotifierProvider.value(value: hydration),
         ChangeNotifierProvider.value(value: nudge),
         Provider.value(value: adService),
         Provider.value(value: notifications),

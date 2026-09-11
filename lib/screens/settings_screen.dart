@@ -8,6 +8,7 @@ import '../services/stats_service.dart';
 import '../services/support_service.dart';
 import '../theme/app_skin.dart';
 import '../theme/app_theme.dart';
+import '../widgets/hydration_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -27,6 +28,8 @@ class SettingsScreen extends StatelessWidget {
         _WatchBridgeCard(stats: stats),
         const SizedBox(height: 16),
         const _NudgeCard(),
+        const SizedBox(height: 16),
+        const HydrationCard(),
         const SizedBox(height: 16),
         const _SupportCard(),
         const SizedBox(height: 16),

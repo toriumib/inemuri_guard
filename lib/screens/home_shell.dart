@@ -6,8 +6,10 @@ import '../services/ad_service.dart';
 import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
+import '../services/hydration_service.dart';
 import '../services/nap_timer_service.dart';
 import '../services/nudge_service.dart';
+import '../services/pomodoro_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
@@ -46,6 +48,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         // 設定タブを開いていないと気づけない作りだと、許可したのに
         // 効いていない状態のまま放置される。
         context.read<NudgeService>().refreshGranted();
+        // 背面にいる間に区間が終わっていたら、ここで拾う。
+        context.read<PomodoroService>().syncFromClock();
+        // 水分補給の予約は「今日の残り＋明日」しか張っていない。
+        // 戻ってくるたびに張り直して、途切れないようにする。
+        context.read<HydrationService>().replan();
       case AppLifecycleState.inactive:
         break;
     }
@@ -92,6 +99,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final detector = context.watch<DrowsinessDetector>();
     final breathing = context.watch<BreathingDetector>();
     final nap = context.watch<NapTimerService>();
+    final pomo = context.watch<PomodoroService>();
     final alarm = context.watch<AlarmService>();
     final stats = context.watch<StatsService>();
     final log = context.watch<SleepLogService>();
@@ -109,7 +117,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         breathing.alarmFiring ||
         nap.phase == NapPhase.done;
 
-    final (mode, label, value) = _status(detector, breathing, nap, anyAlarming);
+    final (mode, label, value) = _status(
+      detector,
+      breathing,
+      nap,
+      pomo,
+      anyAlarming,
+    );
 
     return Scaffold(
       body: Stack(
@@ -223,6 +237,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     DrowsinessDetector detector,
     BreathingDetector breathing,
     NapTimerService nap,
+    PomodoroService pomo,
     bool anyAlarming,
   ) {
     if (anyAlarming) {
@@ -258,6 +273,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ratio > 0.5 ? StatusMode.warn : StatusMode.watching,
         '居眠り検知',
         ratio > 0.5 ? '眠気の兆候あり' : '検知開始中',
+      );
+    }
+    if (pomo.isRunning || pomo.isPaused) {
+      return (
+        StatusMode.watching,
+        'ポモドーロ',
+        '${pomo.isWorkPhase ? '作業中' : '休憩中'} ${pomo.formatted}',
       );
     }
     return (StatusMode.idle, '現在のモード', '待機中');
