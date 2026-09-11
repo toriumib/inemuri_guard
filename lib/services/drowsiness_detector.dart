@@ -102,9 +102,11 @@ class DrowsinessDetector extends ChangeNotifier {
 
   // Eyelid closure plays out over seconds, so there is nothing to gain from
   // running ML Kit at the camera's full frame rate — and plenty to lose,
-  // since this app is meant to sit on a desk running all afternoon. Analysing
-  // ~6 frames a second keeps PERCLOS well sampled at a fraction of the drain.
-  static const _minFrameGap = Duration(milliseconds: 160);
+  // since this app is meant to sit on a desk running all afternoon.
+  // accurate モードの解析は SHARP A105SH で 150〜255ms かかった（実測）。
+  // 160ms だと間に合わず _busy でフレームを捨てるだけなので 250ms（4fps）。
+  // PERCLOS には十分で、発熱も減る。native 側（EyeService.kt）と同じ値。
+  static const _minFrameGap = Duration(milliseconds: 250);
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const _wakeKey = 'detect';
 
