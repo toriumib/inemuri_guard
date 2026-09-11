@@ -217,7 +217,12 @@ class EyeService : Service() {
             FaceDetectorOptions.Builder()
                 // 目の開き具合は classification でしか取れない。
                 .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                // 眼鏡・マスクで顔の一部が隠れても拾えるよう ACCURATE にした。
+                // FAST の2〜3倍遅いが、瞼の開閉は秒単位なので 6fps あれば足りる。
+                // 解析時間が MIN_FRAME_GAP_MS を超えるなら間隔のほうを広げる。
+                // Dart 側（drowsiness_detector.dart）と同じ設定にしてある。
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                .enableTracking()
                 .build()
         )
 
