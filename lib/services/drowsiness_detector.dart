@@ -32,7 +32,13 @@ class DrowsinessDetector extends ChangeNotifier {
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
       enableClassification: true,
-      performanceMode: FaceDetectorMode.fast,
+      // 眼鏡・マスクで顔の一部が隠れても拾えるよう accurate にした。
+      // fast の2〜3倍遅いが、瞼の開閉は秒単位の現象なので 6fps あれば足りる。
+      // 解析時間がフレーム間隔（_minFrameGap）を超えるなら間隔のほうを広げる。
+      performanceMode: FaceDetectorMode.accurate,
+      // 一度捉えた顔を追い続ける。マスクで見失いやすい顔を毎フレーム探し直す
+      // より、追跡のほうが粘る。
+      enableTracking: true,
     ),
   );
 
@@ -168,13 +174,13 @@ class DrowsinessDetector extends ChangeNotifier {
         },
         onReading: (face, l, r) {
           if (!face) {
-            noFaceSeen = true;
+            noteFaceLost();
             _notify();
             return;
           }
-          noFaceSeen = false;
+          noteFaceSeen();
           if (l == null || r == null) return;
-          _ingest((l + r) / 2);
+          ingestEyes(l, r);
         },
       );
       state = DetectorState.watching;
@@ -190,6 +196,7 @@ class DrowsinessDetector extends ChangeNotifier {
     await ScreenWake.release(_wakeKey);
     alarmFiring = false;
     noFaceSeen = false;
+    _noFaceSince = null;
     backgroundFailure = null;
     _handedOverToNative = false;
     final controller = _controller;
@@ -364,6 +371,57 @@ class DrowsinessDetector extends ChangeNotifier {
   @visibleForTesting
   void ingestForTest(double raw) => _ingest(raw);
 
+  /// 左右の目の開き具合を1つにまとめる。**平均ではなく、開いているほう。**
+  ///
+  /// 眼鏡のレンズに光が反射すると、片目だけが「閉じている」と読まれる。
+  /// 平均だと、そのたびに閉眼時間が積み上がって誤って鳴る。
+  /// 両目とも閉じたときだけ「閉」とすれば、片目の読み違いに強くなる。
+  /// ウィンクや片目を擦る動作で鳴らなくなるが、それは眠りではないので失わない。
+  ///
+  /// ⚠️ 既知の弱点: フレームで片目が半分隠れて 0.5 前後を返し続けると、
+  /// もう片方が本当に閉じていても「開」に寄って見逃す。平均なら拾えた場面。
+  /// 切り替えをここ1か所に閉じ込めてあるのは、実機で測って悪ければ
+  /// 平均や「差が大きいときだけ平均」に戻せるようにするため。
+  @visibleForTesting
+  static double combineEyes(double left, double right) =>
+      left > right ? left : right;
+
+  /// カメラ2経路（Flutter 側と native 側）の**両方**がここを通る。
+  /// 片方だけ直して食い違う、を防ぐための一本化。
+  void ingestEyes(double left, double right) =>
+      _ingest(combineEyes(left, right));
+
+  /// 顔を見失った。
+  ///
+  /// 見失っている間は「閉じている」とも「開いている」とも言えない。
+  /// ここで閉眼タイマーをリセットしないと、目を閉じたまま顔が外れて戻って
+  /// きたときに、外れていた時間まで閉眼として数えてしまう（Web 版は
+  /// 最初からリセットしていた。Android だけ抜けていた）。
+  /// PERCLOS は実際のサンプルしか積まないので触らない。
+  /// 鳴っているアラームは止めない——顔を隠せば止まる、では困る。
+  void noteFaceLost() {
+    noFaceSeen = true;
+    _noFaceSince ??= clock();
+    if (!alarmFiring) {
+      _eyesClosedSince = null;
+      closedFor = Duration.zero;
+    }
+  }
+
+  DateTime? _noFaceSince;
+
+  /// 顔が戻った。[noteFaceLost] の対。両方の経路がここを通る。
+  void noteFaceSeen() {
+    noFaceSeen = false;
+    _noFaceSince = null;
+  }
+
+  /// 顔を3秒以上見失っている。よくある原因（眼鏡の反射・マスク・暗さ）を
+  /// 画面で伝えるための目安。一瞬の見失いでいちいち出すと煩い。
+  bool get faceLostLong =>
+      _noFaceSince != null &&
+      clock().difference(_noFaceSince!) >= const Duration(seconds: 3);
+
   void _ingest(double raw) {
     _smoothingWindow.add(raw);
     if (_smoothingWindow.length > _smoothingSize) {
@@ -448,14 +506,14 @@ class DrowsinessDetector extends ChangeNotifier {
       final wasAlarming = alarmFiring;
       final hadFace = !noFaceSeen;
       if (faces.isEmpty) {
-        noFaceSeen = true;
+        noteFaceLost();
       } else {
-        noFaceSeen = false;
+        noteFaceSeen();
         final face = faces.first;
         final l = face.leftEyeOpenProbability;
         final r = face.rightEyeOpenProbability;
         if (l != null && r != null) {
-          _ingest((l + r) / 2);
+          ingestEyes(l, r);
         }
       }
       // A change in alarm or face state must reach the UI now; the rest is

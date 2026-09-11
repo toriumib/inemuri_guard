@@ -93,6 +93,8 @@ void main() {
     });
   });
 
+  _occlusionTests();
+
   group('スヌーズ', () {
     test('スヌーズ中は閉じ続けても鳴らない', () {
       d.setThresholdSeconds(5);
@@ -107,6 +109,77 @@ void main() {
       clock.advance(const Duration(minutes: 4));
       _feed(d, clock, 60, openness: 0.0);
       expect(d.alarmFiring, isTrue);
+    });
+  });
+}
+
+/// 眼鏡・マスク対策。
+///
+/// 眼鏡のレンズに光が反射すると片目だけ「閉」と読まれる。平均で見ると
+/// そのたびに閉眼時間が積み上がって誤って鳴る。両目とも閉じたときだけ
+/// 「閉」にする（[DrowsinessDetector.combineEyes]）。
+void _occlusionTests() {
+  late DrowsinessDetector d;
+  late _Clock clock;
+
+  setUp(() {
+    d = DrowsinessDetector();
+    clock = _Clock();
+    d.clock = clock.call;
+    d.setThresholdSeconds(5);
+  });
+
+  void feedEyes(int count, double l, double r) {
+    for (var i = 0; i < count; i++) {
+      clock.advance(const Duration(milliseconds: 160));
+      d.ingestEyes(l, r);
+    }
+  }
+
+  group('両目の合成', () {
+    test('開いているほうを採る', () {
+      expect(DrowsinessDetector.combineEyes(0.05, 0.95), 0.95);
+      expect(DrowsinessDetector.combineEyes(0.95, 0.05), 0.95);
+      expect(DrowsinessDetector.combineEyes(0.05, 0.05), 0.05);
+    });
+
+    test('片目だけ閉じて見えても鳴らない（レンズの反射・ウィンク）', () {
+      feedEyes(70, 0.05, 0.95); // 約11秒。5秒設定なら平均なら鳴っていた
+      expect(d.alarmFiring, isFalse);
+    });
+
+    test('両目とも閉じれば鳴る', () {
+      feedEyes(70, 0.05, 0.05);
+      expect(d.alarmFiring, isTrue);
+    });
+  });
+
+  group('顔を見失ったとき', () {
+    test('見失っている間の時間は閉眼に数えない', () {
+      // 4秒閉じる → 顔が外れる → 4秒閉じる。続けて数えると8秒で鳴ってしまう。
+      feedEyes(25, 0.05, 0.05); // 約4秒
+      d.noteFaceLost();
+      clock.advance(const Duration(seconds: 10));
+      feedEyes(25, 0.05, 0.05); // 約4秒
+      expect(d.alarmFiring, isFalse, reason: '外れていた10秒を閉眼に数えてはいけない');
+    });
+
+    test('鳴っている最中に顔を隠しても止まらない', () {
+      feedEyes(70, 0.05, 0.05);
+      expect(d.alarmFiring, isTrue);
+      d.noteFaceLost();
+      expect(d.alarmFiring, isTrue, reason: '顔を隠せば止まる、では困る');
+    });
+
+    test('3秒続いたら「長く見失っている」になる', () {
+      d.noteFaceLost();
+      expect(d.faceLostLong, isFalse);
+      clock.advance(const Duration(seconds: 3));
+      expect(d.faceLostLong, isTrue);
+      // 顔が戻れば解除。
+      d.noteFaceSeen();
+      expect(d.faceLostLong, isFalse);
+      expect(d.noFaceSeen, isFalse);
     });
   });
 }

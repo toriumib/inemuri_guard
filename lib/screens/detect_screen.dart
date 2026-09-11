@@ -727,7 +727,12 @@ class _MetricsColumn extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '顔を検出できません',
+              // 3秒たっても見つからないなら、よくある原因を言う。
+              // 眼鏡の反射とマスクは、検出器がいちばん苦手にするもの。
+              detector.faceLostLong
+                  ? '顔を検出できません。眼鏡の反射やマスクで見つけにくいことがあります。'
+                        '顔を明るく、カメラを目の高さに。'
+                  : '顔を検出できません',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: c.accentNap),
