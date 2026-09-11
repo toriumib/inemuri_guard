@@ -514,6 +514,24 @@ class _AboutCard extends StatelessWidget {
               '医療機器ではありません。睡眠に関する不調が続く場合は医療機関にご相談ください。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 12),
+            // 車載機器と同じ水準の免責。用途としては残すが、責任の所在は
+            // 運転者にあることを、ここと背面カメラの説明の両方で言う。
+            Text(
+              '運転・車内でのご利用について',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '本アプリは運転者の注意義務や安全確認を代替するものではなく、'
+              '運転支援装置・安全装置でもありません。眠気の兆候を見逃すこと、'
+              '眠っていないのに作動することがあります。本アプリの動作・不作動・表示に'
+              '依拠して生じた事故・損害について、当運営者は一切の責任を負いません。'
+              '運転中は端末を操作しないでください。端末は視界や操作の妨げにならない位置に'
+              '確実に固定し、道路交通法など各地域の法令に従ってご利用ください。'
+              '眠気を感じたら、アプリの反応にかかわらず安全な場所に停車して休んでください。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
       ),

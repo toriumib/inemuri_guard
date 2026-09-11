@@ -5,7 +5,7 @@ from PIL import Image,ImageDraw,ImageFont
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'store_assets/promo_detection'
-W,H,FPS,DURATION=1080,1920,15,28
+W,H,FPS,DURATION=1080,1920,15,30
 BG='#F5F3EB'; INK='#142C31'
 def font(size): return ImageFont.truetype('C:/Windows/Fonts/YuGothB.ttc',size)
 def decode(file,w,h):

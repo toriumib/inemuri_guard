@@ -6,9 +6,9 @@ foreach ($promoLanguage in @('ja','en')) {
     $promoVoice.Voice = @($promoVoice.GetVoices() | Where-Object { $_.GetDescription().Contains($promoVoiceName) })[0]
     $promoVoice.Rate = 1
     $promoSpeech = if ($promoLanguage -eq 'ja') {
-        'カメラで居眠りの兆候を検知。音や振動でお知らせ。居眠りガードです。これは、AIで作った架空の顔を、実際のウェブアプリに入力した映像。目を閉じた時間を数えて、アラートが出ます。スマホ幅のウェブ表示と、アンドロイドの秒数設定も紹介。眠いときは、無理せず休憩を。'
+        'カメラで居眠りを検知して、音や振動でお知らせ。ウェブとアンドロイドで使える、居眠りガード。パソコン作業中、勉強中、気づいたら目を閉じてた。そんなあなたのためのアプリです。まぶたが閉じ続けるとアラート。何秒で知らせるかも、自分に合わせて調整できます。会社や電車では、振動やイヤホンを活用。音の出る場所は、使う前に確認を。まずは、居眠りガードで検索。'
     } else {
-        'Eyes closing at your desk? Drowsiness Guard uses your camera to detect prolonged eye closure and alert you. This fictional AI face is fed into the real web app. Watch the timer, then the alert. We also show a phone-sized web view and Android timing settings. This is a software demonstration, not proof of sleep detection accuracy. If you feel sleepy, take a break.'
+        'Camera-based drowsiness alerts, on the web and Android. Meet Drowsiness Guard. Working at your computer, studying, and suddenly your eyes drift shut? This app is for you. When your eyes stay closed, it alerts you with sound or vibration. Choose how many seconds to wait. At the office or on the train, try vibration or earphones. Always check where the sound plays before you start. Try Drowsiness Guard today.'
     }
     $promoWav = Join-Path $promoOut "narration-$promoLanguage.wav"
     $promoStream = New-Object -ComObject SAPI.SpFileStream
@@ -16,6 +16,6 @@ foreach ($promoLanguage in @('ja','en')) {
     $promoVoice.AudioOutputStream = $promoStream
     [void]$promoVoice.Speak($promoSpeech)
     $promoStream.Close()
-    & ffmpeg -y -v error -i (Join-Path $promoOut "detection-demo-$promoLanguage.mp4") -i $promoWav -map 0:v -map 1:a -af 'apad' -t 28 -c:v copy -c:a aac -movflags +faststart (Join-Path $promoOut "detection-demo-voiced-$promoLanguage.mp4")
+    & ffmpeg -y -v error -i (Join-Path $promoOut "detection-demo-$promoLanguage.mp4") -i $promoWav -map 0:v -map 1:a -af 'apad' -t 30 -c:v copy -c:a aac -movflags +faststart (Join-Path $promoOut "detection-demo-voiced-$promoLanguage.mp4")
     if ($LASTEXITCODE -ne 0) { throw 'Narration mux failed' }
 }
