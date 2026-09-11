@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'notification_scheduler.dart';
 
 /// Posting a high-importance, vibrating notification does double duty on
 /// Android: it buzzes the phone AND — because Wear OS mirrors phone
@@ -11,8 +15,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 /// with FLAG_LOCAL_ONLY, which tells Android not to bridge it to a paired
 /// watch (the phone still vibrates normally). Set from StatsService on
 /// startup and whenever the user flips the 設定 toggle.
-class NotificationService {
-  static const _channelId = 'sleep_alarm';
+class NotificationService implements NotificationScheduler {
+  static const _channelId = NotificationChannels.alarm;
   static const _flagLocalOnly = 0x100; // Notification.FLAG_LOCAL_ONLY
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -35,17 +39,94 @@ class NotificationService {
       enableVibration: true,
       vibrationPattern: null,
     );
-    await _plugin
+    // ポモドーロは「区間が終わった」の合図。音と振動はあるが、居眠りの
+    // アラームのように全画面で叩き起こすものではない。
+    const pomodoro = AndroidNotificationChannel(
+      NotificationChannels.pomodoro,
+      'ポモドーロ',
+      description: '作業・休憩の区間が終わったときの合図',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    // 水分補給はさらに控えめ。ヘッドアップも出さない。
+    const hydration = AndroidNotificationChannel(
+      NotificationChannels.hydration,
+      '水分補給',
+      description: '決めた間隔で水を一口すすめる通知',
+      importance: Importance.defaultImportance,
+      playSound: true,
+      enableVibration: true,
+    );
+    final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+        >();
+    await android?.createNotificationChannel(channel);
+    await android?.createNotificationChannel(pomodoro);
+    await android?.createNotificationChannel(hydration);
+    await android?.requestNotificationsPermission();
+    // zonedSchedule は TZDateTime しか受け付けない。絶対時刻を UTC で渡す
+    // ので、端末のゾーン名を調べる必要はない。
+    tzdata.initializeTimeZones();
     _ready = true;
+  }
+
+  /// 予約通知。inexact なので数分遅れることがある（Doze）。
+  /// 正確なアラームには SCHEDULE_EXACT_ALARM が要るが、Play のポリシー上
+  /// 慎重に扱われる権限なので使わない。水分補給や作業の区切りに数分の
+  /// 遅れは困らない。
+  @override
+  Future<void> scheduleAt({
+    required int id,
+    required String channel,
+    required String title,
+    required String body,
+    required DateTime at,
+  }) async {
+    if (!_ready) return;
+    final details = AndroidNotificationDetails(
+      channel,
+      channel == NotificationChannels.pomodoro ? 'ポモドーロ' : '水分補給',
+      importance: channel == NotificationChannels.pomodoro
+          ? Importance.high
+          : Importance.defaultImportance,
+      priority: channel == NotificationChannels.pomodoro
+          ? Priority.high
+          : Priority.defaultPriority,
+      category: AndroidNotificationCategory.reminder,
+      additionalFlags: bridgeToWatch
+          ? null
+          : Int32List.fromList([_flagLocalOnly]),
+    );
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.fromMillisecondsSinceEpoch(
+        tz.UTC,
+        at.toUtc().millisecondsSinceEpoch,
+      ),
+      NotificationDetails(android: details),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // iOS 向けの必須引数。Android しか出さないが、無いとコンパイルが通らない。
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    if (!_ready) return;
+    await _plugin.cancel(id);
+  }
+
+  @override
+  Future<void> cancelRange(int from, int toExclusive) async {
+    if (!_ready) return;
+    for (var id = from; id < toExclusive; id++) {
+      await _plugin.cancel(id);
+    }
   }
 
   Future<void> fireAlarm(String title, String body) async {
@@ -73,7 +154,7 @@ class NotificationService {
           : Int32List.fromList([_flagLocalOnly]),
     );
     await _plugin.show(
-      1001,
+      NotificationIds.alarm,
       title,
       body,
       NotificationDetails(android: androidDetails),
@@ -83,6 +164,6 @@ class NotificationService {
 
   Future<void> cancelAlarm() async {
     if (!_ready) return;
-    await _plugin.cancel(1001);
+    await _plugin.cancel(NotificationIds.alarm);
   }
 }
