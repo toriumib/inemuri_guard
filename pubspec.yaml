@@ -45,8 +45,12 @@ dependencies:
   # Keep screen on while monitoring / napping
   wakelock_plus: ^1.2.8
 
-  # Local notification when app is backgrounded during a nap
+  # Local notification when app is backgrounded during a nap.
+  # 予約通知（ポモドーロの終了・水分補給）にも使う。
   flutter_local_notifications: ^18.0.1
+  # zonedSchedule に渡す TZDateTime のため。絶対時刻を UTC で渡すので
+  # 端末のゾーン名は要らない。
+  timezone: ^0.10.1
 
   # Persisted stats + ads-removed flag
   shared_preferences: ^2.3.3

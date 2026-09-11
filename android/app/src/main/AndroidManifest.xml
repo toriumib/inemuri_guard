@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <!-- 予約した通知（ポモドーロの終了・水分補給）を再起動後に張り直すため。
+         SCHEDULE_EXACT_ALARM は入れない。数分の遅れを許す inexact で足りるし、
+         Play のポリシー上も慎重に扱われる権限なので。 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
