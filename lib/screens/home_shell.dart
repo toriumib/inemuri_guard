@@ -42,6 +42,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         detector.handleAppPaused();
+        // 背面ではポモドーロの合図を OS の通知に任せる（予約を消さない）。
+        context.read<PomodoroService>().onBackground();
       case AppLifecycleState.resumed:
         detector.handleAppResumed();
         // 通知アクセスの許可画面から戻ってきた場合をここでも拾う。
@@ -49,7 +51,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         // 効いていない状態のまま放置される。
         context.read<NudgeService>().refreshGranted();
         // 背面にいる間に区間が終わっていたら、ここで拾う。
-        context.read<PomodoroService>().syncFromClock();
+        context.read<PomodoroService>().onForeground();
         // 水分補給の予約は「今日の残り＋明日」しか張っていない。
         // 戻ってくるたびに張り直して、途切れないようにする。
         context.read<HydrationService>().replan();

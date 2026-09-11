@@ -109,6 +109,26 @@ void main() {
         reason: 'force-stop で予約が消えても、起動時に張り直す');
   });
 
+  test('背面で時間が来ても予約は消さず、画面の合図も出さない', () async {
+    // プロセスが生きたまま背面にいると Dart のタイマーも動く。そこで予約を
+    // 消すと通知が一度も出ない（実機で 19:55 の予約が消えて何も鳴らなかった）。
+    final ended = <PomoPhase>[];
+    p.onPhaseEnd = ended.add;
+    await p.start();
+    p.onBackground();
+    clock.advance(const Duration(minutes: 25));
+    p.syncFromClock();
+    await Future<void>.delayed(Duration.zero);
+    expect(p.phase, PomoPhase.workDone);
+    expect(sched.scheduled.containsKey(NotificationIds.pomodoro), isTrue,
+        reason: '背面では OS の通知が合図。予約を残す');
+    expect(ended, isEmpty, reason: '通知の音と二重にしない');
+    // 前面に戻ったら、出ていた通知は片づける。
+    p.onForeground();
+    await Future<void>.delayed(Duration.zero);
+    expect(sched.scheduled.containsKey(NotificationIds.pomodoro), isFalse);
+  });
+
   test('リセットで最初に戻る', () async {
     await p.start();
     clock.advance(const Duration(minutes: 25));
