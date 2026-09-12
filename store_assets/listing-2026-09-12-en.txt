@@ -1,0 +1,57 @@
+TITLE
+Drowsiness Guard: Camera Alert
+
+SHORT DESCRIPTION
+Camera drowsiness alerts that keep watching in background. Nap timer & more.
+
+FULL DESCRIPTION
+Nodding off while working or studying?
+Drowsiness Guard watches your eyelids through your phone's camera and alerts you with vibration and sound when it sees signs of drowsiness. It starts the moment you open the app and keeps watching when you switch apps or turn the screen off.
+
+CAMERA-BASED ALERTS
+Prop up your phone with the camera facing you. The app looks at two things: how long your eyes stay closed, and what share of the last minute they were closed. Blinking never sets it off.
+Set the closed-eye time anywhere from 3 to 60 seconds (default 5).
+We reworked how both eyes are judged and how faces are detected so it works better for people wearing glasses or a mask. Glare on lenses and dim rooms can still cause misses. When no face is found, the app tells you why and what to try.
+
+KEEPS WATCHING IN THE BACKGROUND
+Detection continues when you switch to another app or the screen turns off. The persistent notification only says "running" — the word "drowsy" never appears on your lock screen.
+
+WAKES YOU QUIETLY
+Vibration first, then a quiet sound, then a loud one if you still haven't woken. With earphones in, the sound goes there.
+Audio routing depends on your device and OS; earphones-only playback is not guaranteed. Follow local camera and device rules at work, in class or on public transport.
+
+WAKES YOU WHEN SOMEONE CALLS
+Optionally wake up when a notification arrives from Slack, Teams, Outlook, Gmail, LINE or Discord, or when the phone rings (needs notification access). The app only looks at which app the notification came from; message content is never sent or stored. You can limit it to specific senders.
+
+NAP TIMER, POMODORO, HYDRATION
+5-, 10-, 20- or 30-minute nap timer with references to the research.
+A Pomodoro timer for work and break blocks, with a notification at the end of each block.
+A hydration reminder at the interval and hours you choose.
+
+LOG AND REFLECT
+Record detected events or occasions when someone points out that you nodded off, and review time-of-day patterns. Log your bedtime and wake time too.
+The sleep improvement guide includes references and advice on seeking medical help for persistent sleepiness; it does not diagnose or treat any condition.
+
+ON-DEVICE CAMERA PROCESSING
+Camera frames are processed on your device, not uploaded to a server. The app does not record camera video or microphone audio. No account is required. Ads and in-app purchases use network connections.
+
+TRY THE WEB VERSION
+A browser version is also available for computers and phones:
+https://inemuri.toriumis.com/en/
+Features and operating conditions differ between Web and Android.
+
+BEFORE YOU USE IT
+Dim lighting, glare, glasses and face position can cause missed or false alerts.
+Using this in a vehicle: this app does not replace a driver's own duty of care or attention, and it is not a driver-assistance or safety device. It can miss signs of drowsiness, and it can go off when you are not asleep. The operator accepts no liability for any accident or loss arising from reliance on the app. Do not handle the phone while driving, mount it securely, and follow local law. If you feel sleepy, pull over somewhere safe and rest.
+Alerts are not a substitute for sleep. Seek medical advice if strong sleepiness persists.
+
+Free with ads. See the app for available in-app purchases.
+
+RELEASE NOTES (v1.1.0)
+- Detection now keeps running while you use other apps or turn the screen off
+- Starts watching the moment you open the app (can be turned off)
+- Reworked eye and face detection for people wearing glasses or a mask
+- Wake up on Slack, Teams, email or incoming calls
+- Added Pomodoro, hydration reminder and a sleep-hours log
+- Closed-eye time is now a slider (3–60 s, default 5)
+- Fixed an alarm that could fire the instant you closed your eyes even with a long setting
