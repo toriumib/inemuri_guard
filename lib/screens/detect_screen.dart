@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +9,7 @@ import '../services/drowsiness_detector.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/eye_sparkline.dart';
+import '../widgets/camera_stage.dart';
 import '../widgets/range_slider_row.dart';
 
 class DetectScreen extends StatefulWidget {
@@ -103,90 +102,123 @@ class _DetectScreenState extends State<DetectScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '目の開閉で検知',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      _PreviewToggle(
-                        value: stats.showCameraPreview,
-                        onChanged: stats.setShowCameraPreview,
-                      ),
-                    ],
+                  // Web 版と同じ並び: 大きな映像 → 4つの読み取り → 大きなボタン。
+                  // 机に置いて遠くから見る道具なので、映像と状態の一語が主役。
+                  CameraStage(
+                    detector: detector,
+                    showPreview: stats.showCameraPreview,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '目を閉じ続けた時、または重いまばたきが増えたらアラームを鳴らします。',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  const SizedBox(height: 10),
+                  ReadoutTiles(
+                    detector: detector,
+                    alertsToday: stats.alarmCount,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _CameraPreviewFrame(
-                        detector: detector,
-                        showPreview: stats.showCameraPreview,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(child: _MetricsColumn(detector: detector)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Start/stop sits directly under the preview, above the
-                  // settings — the action people came for shouldn't be
-                  // behind a scroll past options they rarely change.
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: c.accentAlert,
-                            foregroundColor: c.accentAlertInk,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: detector.state == DetectorState.watching
+                        ? OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: c.accentAlert,
+                              side: BorderSide(color: c.accentAlert),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              textStyle: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () async {
+                              await detector.stop();
+                              if (!breathing.alarmFiring) await alarm.stop();
+                            },
+                            child: const Text('止める'),
+                          )
+                        : FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: c.accentGood,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              textStyle: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: detector.state == DetectorState.starting
+                                ? null
+                                : () async {
+                                    detector.setThresholdSeconds(
+                                      stats.eyeThresholdSeconds,
+                                    );
+                                    await detector.start();
+                                  },
+                            child: Text(
+                              detector.state == DetectorState.starting
+                                  ? '起動中…'
+                                  : '見張りを始める',
                             ),
                           ),
-                          onPressed: detector.state == DetectorState.watching
-                              ? null
-                              : () async {
-                                  detector.setThresholdSeconds(
-                                    stats.eyeThresholdSeconds,
-                                  );
-                                  await detector.start();
-                                },
-                          child: Text(
-                            detector.state == DetectorState.starting
-                                ? '起動中…'
-                                : '検知を開始',
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => stats.setShowCameraPreview(
+                            !stats.showCameraPreview,
+                          ),
+                          icon: Icon(
+                            stats.showCameraPreview
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 18,
+                          ),
+                          label: Text(
+                            stats.showCameraPreview ? '映像を隠す' : '映像を出す',
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton(
+                        child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: detector.state == DetectorState.watching
-                              ? () async {
-                                  await detector.stop();
-                                  if (!breathing.alarmFiring) {
-                                    await alarm.stop();
-                                  }
-                                }
-                              : null,
-                          child: const Text('停止'),
+                          onPressed: () => alarm.preview(),
+                          icon: const Icon(Icons.volume_up_outlined, size: 18),
+                          label: const Text('音を試す'),
                         ),
                       ),
                     ],
                   ),
+                  if (detector.noFaceSeen &&
+                      detector.state == DetectorState.watching &&
+                      detector.faceLostLong) ...[
+                    const SizedBox(height: 10),
+                    // 3秒たっても見つからないなら、よくある原因を言う。
+                    // 眼鏡の反射とマスクは、検出器がいちばん苦手にするもの。
+                    Text(
+                      '顔を検出できません。眼鏡の反射やマスクで見つけにくいことがあります。'
+                      '顔を明るく、カメラを目の高さに。',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: c.accentNap),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   RangeSliderRow(
                     title: '何秒目を閉じたら起こす？',
@@ -424,38 +456,6 @@ class _BreathingCardState extends State<BreathingCard> {
   }
 }
 
-/// Small "eye" toggle to hide the live camera feed while detection keeps
-/// running — for when the phone sits facing you but you don't want your own
-/// face staring back, or you just want less on screen.
-class _PreviewToggle extends StatelessWidget {
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  const _PreviewToggle({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => onChanged(!value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              value ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              size: 18,
-              color: c.textDim,
-            ),
-            const SizedBox(width: 4),
-            Text('映像', style: TextStyle(fontSize: 12.5, color: c.textDim)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Big, tappable seconds picker shared by both sensor cards — replaces the
 /// old dropdown, which was too small/fiddly to hit reliably.
@@ -552,208 +552,7 @@ class _ToneRow extends StatelessWidget {
   }
 }
 
-class _CameraPreviewFrame extends StatelessWidget {
-  final DrowsinessDetector detector;
-  final bool showPreview;
-  const _CameraPreviewFrame({
-    required this.detector,
-    required this.showPreview,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final controller = detector.controller;
-    final isLive = controller != null && controller.value.isInitialized;
-    return Container(
-      width: 108,
-      height: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.border),
-        color: c.surface2,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (isLive && showPreview)
-            CameraPreview(controller)
-          else if (isLive)
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.visibility_off_outlined,
-                    color: c.textDim,
-                    size: 28,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '映像は非表示\n検知は継続中',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            )
-          else
-            Center(
-              child: Text(
-                'カメラ未起動\n「検知を開始」で\nアクセス許可',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          if (detector.state == DetectorState.watching)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'REC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricsColumn extends StatelessWidget {
-  final DrowsinessDetector detector;
-  const _MetricsColumn({required this.detector});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final openness = detector.eyeOpenness;
-    final barColor = openness > 0.5
-        ? c.accentGood
-        : (openness > detector.openThreshold ? c.accentNap : c.accentAlert);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '目の開き',
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Text(
-              '${(openness * 100).toStringAsFixed(0)}%',
-              style: _mono(context),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: LinearProgressIndicator(
-            value: openness.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: c.surface2,
-            valueColor: AlwaysStoppedAnimation(barColor),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 40,
-          child: CustomPaint(
-            painter: EyeSparkline(
-              values: detector.history.isEmpty ? [1, 1] : detector.history,
-              lineColor: c.accentGood,
-              fillColor: c.accentGood.withValues(alpha: 0.15),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: c.surface2,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: c.border),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '目を閉じている時間',
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Text('${detector.closedFor.inSeconds}秒', style: _mono(context)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '重いまばたき率',
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Text(
-              '${(detector.perclos * 100).toStringAsFixed(0)}%',
-              style: _mono(context),
-            ),
-          ],
-        ),
-        if (detector.noFaceSeen && detector.state == DetectorState.watching)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              // 3秒たっても見つからないなら、よくある原因を言う。
-              // 眼鏡の反射とマスクは、検出器がいちばん苦手にするもの。
-              detector.faceLostLong
-                  ? '顔を検出できません。眼鏡の反射やマスクで見つけにくいことがあります。'
-                        '顔を明るく、カメラを目の高さに。'
-                  : '顔を検出できません',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: c.accentNap),
-            ),
-          ),
-      ],
-    );
-  }
-
-  TextStyle _mono(BuildContext context) =>
-      const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold);
-}
 
 class _LogList extends StatelessWidget {
   final StatsService stats;
