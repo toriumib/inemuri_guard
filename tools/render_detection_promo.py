@@ -49,7 +49,7 @@ def frame(t,lang):
         panel(im,clip(web,11.8).crop((105,35,535,600)),565,690,950)
         center(d,1550,'Webで試す / AndroidはGoogle Playへ' if ja else 'TRY WEB / FIND ANDROID ON GOOGLE PLAY',32)
         center(d,1625,'inemuri.toriumis.com',44)
-    center(d,1800,'AI生成の架空人物・テスト映像入力' if ja else 'FICTIONAL AI FACE · PRERECORDED TEST INPUT',28)
+        center(d,1800,'カメラ映像は端末内で解析' if ja else 'CAMERA ANALYSIS RUNS ON DEVICE',28)
     center(d,1850,'眠いときは休憩を。運転中の安全を保証するものではありません。' if ja else 'TAKE A BREAK WHEN SLEEPY. NOT A DRIVING SAFETY SYSTEM.',21)
     return im
 for lang in ['ja','en']:
