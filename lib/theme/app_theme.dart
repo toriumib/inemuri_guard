@@ -93,16 +93,16 @@ class AppTheme {
       headlineMedium: display.copyWith(
         fontWeight: FontWeight.w800,
         color: c.text,
-        fontSize: 23,
+        fontSize: 21,
       ),
       titleLarge: display.copyWith(fontWeight: FontWeight.w700, color: c.text),
       titleMedium: display.copyWith(
         fontWeight: FontWeight.w700,
         color: c.text,
-        fontSize: 16,
+        fontSize: 15,
       ),
-      bodyLarge: body.copyWith(color: c.text, fontSize: 15, height: 1.6),
-      bodyMedium: body.copyWith(color: c.textDim, fontSize: 13.5, height: 1.6),
+      bodyLarge: body.copyWith(color: c.text, fontSize: 14, height: 1.5),
+      bodyMedium: body.copyWith(color: c.textDim, fontSize: 12.5, height: 1.45),
       labelLarge: body.copyWith(color: c.text, fontWeight: FontWeight.w700),
     );
   }
@@ -127,7 +127,7 @@ class AppTheme {
         color: c.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: c.border),
         ),
       ),
