@@ -6,9 +6,9 @@ foreach ($promoLanguage in @('ja','en')) {
     $promoVoice.Voice = @($promoVoice.GetVoices() | Where-Object { $_.GetDescription().Contains($promoVoiceName) })[0]
     $promoVoice.Rate = 1
     $promoSpeech = if ($promoLanguage -eq 'ja') {
-        'カメラで居眠りを検知して、音や振動でお知らせ。ウェブとアンドロイドで使える、居眠りガード。パソコン作業中、勉強中、気づいたら目を閉じてた。そんなあなたのためのアプリです。まぶたが閉じ続けるとアラート。何秒で知らせるかも、自分に合わせて調整できます。会社や電車では、振動やイヤホンを活用。音の出る場所は、使う前に確認を。まずは、居眠りガードで検索。'
+        'カメラで居眠りを検知して、音や振動でお知らせ。ウェブとアンドロイドで使える、居眠りガード。パソコン作業中、運転中、勉強中、気づいたら目を閉じてた。そんな方のために作っています。まぶたが閉じ続けるとアラート。何秒で知らせるかも調整できます。イヤホンを使えば、会社や電車でも使いやすい。まずは、居眠りガードで検索。眠いときは無理せず休憩を。'
     } else {
-        'Camera-based drowsiness alerts, on the web and Android. Meet Drowsiness Guard. Working at your computer, studying, and suddenly your eyes drift shut? This app is for you. When your eyes stay closed, it alerts you with sound or vibration. Choose how many seconds to wait. At the office or on the train, try vibration or earphones. Always check where the sound plays before you start. Try Drowsiness Guard today.'
+        'Camera-based drowsiness alerts, on the web and Android. Meet Drowsiness Guard. Working, driving, or studying, and suddenly your eyes drift shut? This app is for you. When your eyes stay closed, it alerts you with sound or vibration. Choose how many seconds to wait. With earphones, it can be easier to use at work or on a train. Check the audio output before you start. Try Drowsiness Guard today, and take a break when you feel sleepy.'
     }
     $promoWav = Join-Path $promoOut "narration-$promoLanguage.wav"
     $promoStream = New-Object -ComObject SAPI.SpFileStream
