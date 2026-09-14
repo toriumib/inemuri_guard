@@ -68,6 +68,11 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // R8 は Flutter の既定で有効。通知プラグインの keep ルールを足す。
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
