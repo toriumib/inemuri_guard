@@ -81,7 +81,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       },
     );
     final stats = context.read<StatsService>();
-    if (!stats.adsRemoved) {
+    if (!stats.isPremium) {
       _banner = context.read<AdService>().createBanner(
         onLoaded: () => setState(() {}),
       );
@@ -121,7 +121,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     // Tear the banner down for good once ads are bought off, rather than just
     // hiding it — otherwise it keeps loading and costing bandwidth.
-    if (stats.adsRemoved && _banner != null) {
+    if (stats.isPremium && _banner != null) {
       final banner = _banner;
       _banner = null;
       WidgetsBinding.instance.addPostFrameCallback((_) => banner?.dispose());
@@ -191,7 +191,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 Expanded(
                   child: IndexedStack(index: _index, children: _pages),
                 ),
-                if (_banner != null && !stats.adsRemoved)
+                if (_banner != null && !stats.isPremium)
                   SizedBox(
                     width: _banner!.size.width.toDouble(),
                     height: _banner!.size.height.toDouble(),

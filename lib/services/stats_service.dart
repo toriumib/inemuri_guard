@@ -23,6 +23,7 @@ class StatsService extends ChangeNotifier {
   static const _kAlarms = 'stats_alarms';
   static const _kLog = 'stats_log';
   static const _kAdsRemoved = 'ads_removed';
+  static const _kPremium = 'premium';
   static const _kShowCameraPreview = 'show_camera_preview';
   static const _kUseBackCamera = 'use_back_camera';
   static const _kEyeThresholdSeconds = 'eye_threshold_seconds';
@@ -37,6 +38,10 @@ class StatsService extends ChangeNotifier {
   int alarmCount = 0;
   int napsAllTime = 0;
   bool adsRemoved = false;
+
+  /// プレミアム（買い切り 980円）を買ったか。広告なし・テーマ全部・通知の
+  /// 差出人フィルタが付く。判定は [isPremium] を使う（旧商品の救済込み）。
+  bool premium = false;
   bool showCameraPreview = true;
 
   /// 背面カメラで見張るか。車のスタンドに載せて運転席へ向けるときに使う。
@@ -54,7 +59,12 @@ class StatsService extends ChangeNotifier {
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
 
-  bool ownsSkin(AppSkin skin) => skin.isFree || ownedSkinIds.contains(skin.id);
+  /// 「広告除去」「テーマ」を単品で買った人はプレミアム扱いにする。
+  /// 商品を 980 円に一本化したときに、先に買った人が損をしないための救済。
+  bool get isPremium => premium || adsRemoved || ownedSkinIds.isNotEmpty;
+
+  bool ownsSkin(AppSkin skin) =>
+      skin.isFree || isPremium || ownedSkinIds.contains(skin.id);
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,6 +84,7 @@ class StatsService extends ChangeNotifier {
       await prefs.setInt(_kAlarms, 0);
     }
     adsRemoved = prefs.getBool(_kAdsRemoved) ?? false;
+    premium = prefs.getBool(_kPremium) ?? false;
     showCameraPreview = prefs.getBool(_kShowCameraPreview) ?? true;
     useBackCamera = prefs.getBool(_kUseBackCamera) ?? false;
     eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
@@ -136,6 +147,13 @@ class StatsService extends ChangeNotifier {
     adsRemoved = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAdsRemoved, value);
+    notifyListeners();
+  }
+
+  Future<void> setPremium(bool value) async {
+    premium = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kPremium, value);
     notifyListeners();
   }
 

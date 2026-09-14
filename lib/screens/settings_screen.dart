@@ -21,9 +21,9 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _SkinCard(stats: stats, purchases: purchases),
+        _PremiumCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
-        _RemoveAdsCard(stats: stats, purchases: purchases),
+        _SkinCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
         _WatchBridgeCard(stats: stats),
         const SizedBox(height: 16),
@@ -100,22 +100,28 @@ class _SkinCard extends StatelessWidget {
             Text('テーマ', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 2),
             Text(
-              'どのテーマも端末のライト／ダーク設定に合わせて切り替わります。',
+              stats.isPremium
+                  ? 'どのテーマも端末のライト／ダーク設定に合わせて切り替わります。'
+                  : '有料のテーマはプレミアムに含まれます。'
+                        'どのテーマも端末のライト／ダーク設定に合わせて切り替わります。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 14),
             for (final skin in AppSkin.values) ...[
+              // 有料テーマは単品で売らない。押すとプレミアムの購入に進む。
               _SkinRow(
                 skin: skin,
                 owned: stats.ownsSkin(skin),
                 selected: stats.selectedSkin == skin,
                 price: skin.productId == null
                     ? null
-                    : purchases.priceFor(skin.productId!),
-                busy: purchases.pendingProductId == skin.productId,
+                    : purchases.priceFor(PurchaseService.premiumId),
+                busy:
+                    skin.productId != null &&
+                    purchases.pendingProductId == PurchaseService.premiumId,
                 onSelect: () => stats.selectSkin(skin),
                 onBuy: purchases.available && skin.productId != null
-                    ? () => purchases.buy(skin.productId!)
+                    ? () => purchases.buy(PurchaseService.premiumId)
                     : null,
               ),
               if (skin != AppSkin.values.last)
@@ -272,16 +278,19 @@ class _Dot extends StatelessWidget {
   );
 }
 
-class _RemoveAdsCard extends StatelessWidget {
+/// プレミアム（買い切り 980円）。売る商品はこれ一つ。
+/// 起こす機能は全部無料のまま。有料は「無くても困らないが、あると毎日
+/// ちょっと良い」もの——広告なし・テーマ全部・通知の差出人フィルタ。
+class _PremiumCard extends StatelessWidget {
   final StatsService stats;
   final PurchaseService purchases;
-  const _RemoveAdsCard({required this.stats, required this.purchases});
+  const _PremiumCard({required this.stats, required this.purchases});
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final price = purchases.priceFor(PurchaseService.removeAdsId);
-    final busy = purchases.pendingProductId == PurchaseService.removeAdsId;
+    final price = purchases.priceFor(PurchaseService.premiumId);
+    final busy = purchases.pendingProductId == PurchaseService.premiumId;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -290,26 +299,53 @@ class _RemoveAdsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('広告を消す', style: Theme.of(context).textTheme.titleMedium),
+            Text('プレミアム', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 2),
             Text(
-              stats.adsRemoved
+              stats.isPremium
                   ? '購入済みです。ありがとうございます。'
-                  : '買い切りで下部のバナー広告と全画面広告が出なくなります。',
+                  : '買い切り一回で、ずっと。起こす機能はこれからも全部無料です。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const SizedBox(height: 14),
-            if (stats.adsRemoved)
-              Row(
-                children: [
-                  Icon(Icons.check_circle, color: c.accentGood, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '広告は無効になっています',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              )
+            const SizedBox(height: 10),
+            for (final line in const [
+              '広告が出なくなる（下のバナーと全画面）',
+              'テーマが全部使える',
+              '「呼ばれたら起こす」を差出人・件名で絞り込める',
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      stats.isPremium
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                      size: 18,
+                      color: stats.isPremium ? c.accentGood : c.textDim,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 10),
+            if (stats.isPremium)
+              (stats.premium
+                  ? const SizedBox.shrink()
+                  : Text(
+                      // 旧「広告除去」「テーマ」を買った人。追加の支払いは無い。
+                      '以前に広告除去やテーマを買った方は、そのままプレミアムです。',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                    ))
             else if (busy)
               const Center(child: CircularProgressIndicator())
             else if (purchases.available && price != null)
@@ -324,8 +360,8 @@ class _RemoveAdsCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () => purchases.buy(PurchaseService.removeAdsId),
-                  child: Text('広告を消す　$price'),
+                  onPressed: () => purchases.buy(PurchaseService.premiumId),
+                  child: Text('プレミアムにする　$price'),
                 ),
               )
             else
@@ -693,7 +729,17 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
               ),
             if (nudge.enabled) ...[
               const Divider(height: 26),
-              _SenderFilterField(nudge: nudge),
+              // 差出人の絞り込みはプレミアム。無料でもアプリ単位では起こせる。
+              if (context.watch<StatsService>().isPremium)
+                _SenderFilterField(nudge: nudge)
+              else
+                Text(
+                  '差出人・件名で絞り込む（「上司からのメールだけ」など）は'
+                  'プレミアムで使えます。',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                ),
             ],
             if (nudge.lastApp != null)
               Text(
