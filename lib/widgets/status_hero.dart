@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 import '../theme/app_theme.dart';
 
 enum StatusMode { idle, watching, warn, alert }
@@ -168,6 +169,12 @@ class AlarmFlashOverlay extends StatefulWidget {
   State<AlarmFlashOverlay> createState() => _AlarmFlashOverlayState();
 }
 
+/// アラーム中の画面。
+///
+/// 以前は赤を 0.9 秒でふわっと明滅させていた。閉じたまぶた越しに届くのは
+/// 色ではなく**明るさの差**なので、白と暗を 2.5Hz で切り替え、しかも
+/// 画面の明るさを最大に上げる。終わったら元の明るさに戻す。
+/// タップは透過する（止める操作の邪魔をしない）。
 class _AlarmFlashOverlayState extends State<AlarmFlashOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
@@ -177,22 +184,43 @@ class _AlarmFlashOverlayState extends State<AlarmFlashOverlay>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 200),
+    );
+    if (widget.active) _start();
   }
 
   @override
   void didUpdateWidget(covariant AlarmFlashOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !_ctrl.isAnimating) {
-      _ctrl.repeat(reverse: true);
-    } else if (!widget.active) {
-      _ctrl.stop();
+    if (widget.active && !oldWidget.active) {
+      _start();
+    } else if (!widget.active && oldWidget.active) {
+      _stop();
     }
+  }
+
+  void _start() {
+    _ctrl.repeat(reverse: true);
+    // 端末の明るさ設定に関係なく最大へ。失敗しても点滅は続ける。
+    ScreenBrightness.instance
+        .setApplicationScreenBrightness(1.0)
+        .catchError((_) {});
+  }
+
+  void _stop() {
+    _ctrl.stop();
+    ScreenBrightness.instance
+        .resetApplicationScreenBrightness()
+        .catchError((_) {});
   }
 
   @override
   void dispose() {
+    if (widget.active) {
+      ScreenBrightness.instance
+          .resetApplicationScreenBrightness()
+          .catchError((_) {});
+    }
     _ctrl.dispose();
     super.dispose();
   }
@@ -200,12 +228,15 @@ class _AlarmFlashOverlayState extends State<AlarmFlashOverlay>
   @override
   Widget build(BuildContext context) {
     if (!widget.active) return const SizedBox.shrink();
-    final c = AppColors.of(context);
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: _ctrl,
+        // 白（不透明に近い）と暗（薄い黒）を往復。UI は一瞬隠れるが、
+        // それが目的——まぶた越しの明暗差を最大にする。
         builder: (context, _) => Container(
-          color: c.accentAlert.withValues(alpha: 0.22 * _ctrl.value),
+          color: _ctrl.value > 0.5
+              ? Colors.white.withValues(alpha: 0.9)
+              : Colors.black.withValues(alpha: 0.35),
         ),
       ),
     );

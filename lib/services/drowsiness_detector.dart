@@ -95,6 +95,18 @@ class DrowsinessDetector extends ChangeNotifier {
   static const _perclosWarmUp = Duration(seconds: _perclosWindowSeconds);
   double perclos = 0;
 
+  /// アラーム中、目が開いたと認めるまでの時間。
+  ///
+  /// 以前は1フレームでも開けば止めていた。寝ぼけて目を細めただけで止まり、
+  /// そのまま二度寝する。目覚まし時計の「計算問題を解くまで止まらない」と
+  /// 同じ理屈で、カメラが「開いている」を続けて見るまで止めない。
+  /// このアプリにしか作れない止め方。
+  static const eyesOpenToStop = Duration(seconds: 3);
+  DateTime? _eyesOpenSince;
+
+  /// アラーム中に目を開け続けている時間（画面で「あと N 秒」を出すため）。
+  Duration openFor = Duration.zero;
+
   /// 現在時刻の取り出し口。テストで1分の経過を作るためだけに差し替える。
   /// 本番では常に [DateTime.now]。
   @visibleForTesting
@@ -354,6 +366,8 @@ class DrowsinessDetector extends ChangeNotifier {
   /// Silences the current alarm and ignores closed-eye time for 3 minutes.
   void snooze() {
     alarmFiring = false;
+    _eyesOpenSince = null;
+    openFor = Duration.zero;
     _eyesClosedSince = null;
     closedFor = Duration.zero;
     _perclosWindow.clear();
@@ -404,6 +418,9 @@ class DrowsinessDetector extends ChangeNotifier {
   void noteFaceLost() {
     noFaceSeen = true;
     _noFaceSince ??= clock();
+    // 顔が見えないのは「開いている」ではない。開けている時間は積まない。
+    _eyesOpenSince = null;
+    openFor = Duration.zero;
     if (!alarmFiring) {
       _eyesClosedSince = null;
       closedFor = Duration.zero;
@@ -444,10 +461,21 @@ class DrowsinessDetector extends ChangeNotifier {
     } else if (eyeOpenness < openThreshold) {
       _eyesClosedSince ??= now;
       closedFor = now.difference(_eyesClosedSince!);
+      // 閉じたら「開けている時間」は振り出しに戻る。
+      _eyesOpenSince = null;
+      openFor = Duration.zero;
     } else {
       _eyesClosedSince = null;
       closedFor = Duration.zero;
-      if (alarmFiring) alarmFiring = false;
+      if (alarmFiring) {
+        _eyesOpenSince ??= now;
+        openFor = now.difference(_eyesOpenSince!);
+        if (openFor >= eyesOpenToStop) {
+          alarmFiring = false;
+          _eyesOpenSince = null;
+          openFor = Duration.zero;
+        }
+      }
     }
 
     if (suppressed) {
@@ -482,6 +510,8 @@ class DrowsinessDetector extends ChangeNotifier {
           !suppressed && perclosReady && perclos >= _perclosAlarmRatio;
       if (byClosure || byPerclos) {
         alarmFiring = true;
+        _eyesOpenSince = null;
+        openFor = Duration.zero;
         if (byPerclos) {
           // 一度 PERCLOS で鳴らしたら、その1分ぶんは使い切ったものとして
           // 捨てる。残したままだと、目を開けて止まった直後にまだ高いままの

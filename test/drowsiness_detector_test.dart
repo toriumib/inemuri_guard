@@ -94,6 +94,7 @@ void main() {
   });
 
   _occlusionTests();
+  _eyesOpenToStopTests();
 
   group('スヌーズ', () {
     test('スヌーズ中は閉じ続けても鳴らない', () {
@@ -181,5 +182,57 @@ void _occlusionTests() {
       expect(d.faceLostLong, isFalse);
       expect(d.noFaceSeen, isFalse);
     });
+  });
+}
+
+/// 「目を開けるまで止まらない」。1フレーム開いただけでは止めない。
+void _eyesOpenToStopTests() {
+  late DrowsinessDetector d;
+  late _Clock clock;
+
+  setUp(() {
+    d = DrowsinessDetector();
+    clock = _Clock();
+    d.clock = clock.call;
+    d.setThresholdSeconds(5);
+  });
+
+  void feed(int count, double openness) {
+    for (var i = 0; i < count; i++) {
+      clock.advance(const Duration(milliseconds: 160));
+      d.ingestForTest(openness);
+    }
+  }
+
+  test('目を1フレーム開いただけでは止まらない', () {
+    feed(40, 0.0); // 約6.4秒 → 鳴る
+    expect(d.alarmFiring, isTrue);
+    feed(3, 1.0); // 約0.5秒だけ開く（寝ぼけて目を細めた）
+    expect(d.alarmFiring, isTrue, reason: '一瞬開いただけで止めない');
+    expect(d.openFor.inMilliseconds, greaterThan(0));
+  });
+
+  test('3秒開け続けたら止まる', () {
+    feed(40, 0.0);
+    // 平滑化（4フレーム平均）を抜けるぶんも含めて 3 秒以上。
+    feed(25, 1.0); // 約4秒
+    expect(d.alarmFiring, isFalse);
+    expect(d.openFor, Duration.zero);
+  });
+
+  test('途中でまた閉じたら、開けている時間は振り出しに戻る', () {
+    feed(40, 0.0);
+    feed(12, 1.0); // 約2秒
+    feed(6, 0.0); // また閉じる
+    expect(d.alarmFiring, isTrue);
+    expect(d.openFor, Duration.zero);
+  });
+
+  test('顔が消えても「開いている」には数えない', () {
+    feed(40, 0.0);
+    feed(12, 1.0);
+    d.noteFaceLost();
+    expect(d.openFor, Duration.zero);
+    expect(d.alarmFiring, isTrue);
   });
 }
