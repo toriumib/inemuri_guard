@@ -366,7 +366,11 @@ class _PremiumCard extends StatelessWidget {
               )
             else
               Text(
-                'ストアに接続できませんでした。時間をおいて開き直してください。',
+                // ストアに繋がっているのに値段が無い＝Play Console 側で
+                // premium がまだ有効になっていない。接続失敗と混ぜない。
+                purchases.storeReady
+                    ? 'この商品は準備中です。'
+                    : 'ストアに接続できませんでした。時間をおいて開き直してください。',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             const SizedBox(height: 6),
