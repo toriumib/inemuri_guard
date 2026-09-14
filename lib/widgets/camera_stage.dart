@@ -148,7 +148,7 @@ class CameraStage extends StatelessWidget {
                             !watching
                                 ? '目 —'
                                 : noFace
-                                ? '顔が見つかりません'
+                                ? '顔 なし'
                                 : '目 ${closed ? '閉' : '開'} '
                                       '${(detector.eyeOpenness * 100).toStringAsFixed(0)}%',
                             style: const TextStyle(
@@ -160,7 +160,8 @@ class CameraStage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '閉じている時間 '
+                          // 「閉じている時間」だと 360dp で左の文が「顔が…」に潰れる。
+                          '閉じて '
                           '${(detector.closedFor.inMilliseconds / 1000).toStringAsFixed(1)}s',
                           style: const TextStyle(
                             color: Colors.white,
@@ -268,7 +269,9 @@ class _Tile extends StatelessWidget {
     final c = AppColors.of(context);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        // 4 枚並ぶと 360dp の端末で 1 枚 56dp しか無い。左右の余白は詰め、
+        // 文字は折り返さず縮める（実機で "CLO SED" "0..." に化けた）。
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
         decoration: BoxDecoration(
           color: c.surface,
           borderRadius: BorderRadius.circular(12),
@@ -277,25 +280,33 @@ class _Tile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 10,
-                letterSpacing: 1.1,
-                color: c.textDim,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 10,
+                  letterSpacing: 0.8,
+                  color: c.textDim,
+                ),
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: hot ? (hotColor ?? c.accentAlert) : c.text,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: hot ? (hotColor ?? c.accentAlert) : c.text,
+                ),
               ),
             ),
           ],
