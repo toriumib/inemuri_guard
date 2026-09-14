@@ -47,7 +47,18 @@ Alerts are not a substitute for sleep. Seek medical advice if strong sleepiness 
 
 Free with ads. See the app for available in-app purchases.
 
-RELEASE NOTES (v1.1.0)
+RELEASE NOTES (v1.2.0) -- use this block for the Play "release notes" field
+- The alarm won't stop until you open your eyes (it clears itself after 3 s of open eyes)
+- While it rings, the screen goes to maximum brightness and strobes white so the light gets through closed eyelids
+- Purchases merged into one "Premium" (no ads, all themes, sender filter for wake-up notifications). If you already bought ad removal or a theme, you're Premium automatically
+- Detection keeps running while you use other apps or turn the screen off
+- Starts watching the moment you open the app (can be turned off)
+- Reworked eye and face detection for people wearing glasses or a mask
+- Wake up on Slack, Teams, email or incoming calls
+- Added Pomodoro, hydration reminder and a sleep-hours log
+- Closed-eye time is now a slider (3-60 s, default 5)
+
+RELEASE NOTES (v1.1.0 -- never published, folded into 1.2.0)
 - Detection now keeps running while you use other apps or turn the screen off
 - Starts watching the moment you open the app (can be turned off)
 - Reworked eye and face detection for people wearing glasses or a mask
