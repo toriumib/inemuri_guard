@@ -45,6 +45,9 @@ dependencies:
   # Keep screen on while monitoring / napping
   wakelock_plus: ^1.2.8
 
+  # アラーム中だけ画面の明るさを最大にする（閉じたまぶた越しに明暗を届ける）
+  screen_brightness: ^2.1.0
+
   # Local notification when app is backgrounded during a nap.
   # 予約通知（ポモドーロの終了・水分補給）にも使う。
   flutter_local_notifications: ^18.0.1

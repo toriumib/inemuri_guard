@@ -169,7 +169,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                               await detector.start();
                             }
                           },
-                    onSnooze: anyAlarming
+                    // 目のアラーム中はスヌーズを出さない——目を開ければ止まる。
+                    // ただしカメラが顔を見失っているときは止めようが無いので出す。
+                    onSnooze: anyAlarming &&
+                            !(detector.alarmFiring && !detector.faceLostLong)
                         ? () {
                             alarm.stop();
                             if (detector.alarmFiring) {
@@ -256,11 +259,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     bool anyAlarming,
   ) {
     if (anyAlarming) {
+      // 目のアラームは「目を開けるまで止まらない」。残り秒数を出して、
+      // 何をすれば止まるのかを画面で言う。
+      final remain = (DrowsinessDetector.eyesOpenToStop - detector.openFor)
+          .inSeconds
+          .clamp(0, DrowsinessDetector.eyesOpenToStop.inSeconds);
       return (
         StatusMode.alert,
         (detector.alarmFiring || breathing.alarmFiring) ? '居眠り検知' : '仮眠タイマー',
         detector.alarmFiring
-            ? '⚠ 目を閉じています！'
+            ? (detector.openFor > Duration.zero
+                  ? '目を開けたまま あと$remain秒'
+                  : '⚠ 起きて！目を開けてください')
             : (breathing.alarmFiring ? '⚠ 寝息を検知しました！' : '⏰ 起床時間！'),
       );
     }
