@@ -9,10 +9,14 @@ import 'stats_service.dart';
 ///
 /// | Product ID       | Type          | What it unlocks            |
 /// |------------------|---------------|----------------------------|
-/// | `remove_ads`     | non-consumable| removes banner + interstitial |
-/// | `skin_midnight`  | non-consumable| ミッドナイト theme         |
-/// | `skin_forest`    | non-consumable| フォレスト theme           |
-/// | `skin_sakura`    | non-consumable| サクラ theme               |
+/// | `premium`        | non-consumable| 広告なし＋全テーマ＋差出人フィルタ（¥980、これだけ売る） |
+/// | `remove_ads`     | non-consumable| （旧）広告除去。復元用に残す。持っていればプレミアム扱い |
+/// | `skin_midnight`  | non-consumable| （旧）ミッドナイト theme。同上 |
+/// | `skin_forest`    | non-consumable| （旧）フォレスト theme。同上   |
+/// | `skin_sakura`    | non-consumable| （旧）サクラ theme。同上       |
+///
+/// 2026-09-14 に `premium` 一本に絞った。旧 ID は買った人の復元のために
+/// 問い合わせ続けるが、UI からは買えない（Play Console 側で非アクティブに）。
 ///
 /// IMPORTANT (same trap as the nanimonjya/petaname setup): each ID must be
 /// created and ACTIVATED in Play Console → 収益化 → アプリ内アイテム with
@@ -25,9 +29,11 @@ import 'stats_service.dart';
 /// them; `completePurchase` does that, so it must run *after* the entitlement
 /// is granted.
 class PurchaseService extends ChangeNotifier {
+  static const String premiumId = 'premium';
   static const String removeAdsId = 'remove_ads';
 
   static Set<String> get allProductIds => {
+    premiumId,
     removeAdsId,
     ...AppSkin.paidProductIds,
   };
@@ -120,6 +126,10 @@ class PurchaseService extends ChangeNotifier {
   }
 
   Future<void> _grant(String productId) async {
+    if (productId == premiumId) {
+      await stats.setPremium(true);
+      return;
+    }
     if (productId == removeAdsId) {
       await stats.setAdsRemoved(true);
       return;
