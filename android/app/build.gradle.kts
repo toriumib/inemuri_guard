@@ -104,5 +104,8 @@ dependencies {
     // 縛るため、画面を離れるとカメラを手放してしまう。そこで常駐サービス側で
     // Camera2 を直接開き、ML Kit も native で回す。
     implementation("com.google.mlkit:face-detection:16.1.7")
+    // 車に乗り続けていたら休憩を勧めるための身体活動認識。
+    // フレームワークにはこのAPIが無く、Play services の location に入っている。
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.core:core-ktx:1.13.1")
 }

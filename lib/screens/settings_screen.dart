@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/drive_nudge.dart';
 import '../services/notification_service.dart';
 import '../services/nudge_service.dart';
 import '../services/purchase_service.dart';
@@ -27,6 +28,10 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 16),
         _WatchBridgeCard(stats: stats),
         const SizedBox(height: 16),
+        if (DriveNudgeService.isSupported) ...[
+          const _DriveNudgeCard(),
+          const SizedBox(height: 16),
+        ],
         const _NudgeCard(),
         const SizedBox(height: 16),
         const HydrationCard(),
@@ -35,6 +40,79 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 16),
         const _AboutCard(),
       ],
+    );
+  }
+}
+
+/// 車など乗り物に乗り続けていたら「休憩をおすすめします」と伝える設定。
+///
+/// 身体活動認識は「乗り物に乗っているか」しか教えてくれないので、
+/// 車・バス・電車を区別できない。区別できないものを区別したふりは
+/// しない——勧め方のほう（90秒続いたら・45分は再勧誘しない）で
+/// 乗り物一般に成り立つようにしてある（判定は DriveNudgeService）。
+class _DriveNudgeCard extends StatelessWidget {
+  const _DriveNudgeCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = context.watch<StatsService>();
+    final drive = context.watch<DriveNudgeService>();
+    final c = AppColors.of(context);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('車に乗ったら休憩を勧める', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              '乗り物に乗り続けているとき、休憩をおすすめします。'
+              'アプリを開いていればポップアップ、開いていなければ通知で届きます。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: stats.driveNudge,
+              onChanged: (v) async {
+                await stats.setDriveNudge(v);
+                // ON にした瞬間に身体活動認識の許可を聞く。断られたら
+                // 何もしない（スイッチは ON のまま残し、下の文で伝える）。
+                if (v) {
+                  await drive.start();
+                } else {
+                  await drive.stop();
+                }
+              },
+              title: const Text('勧める'),
+              subtitle: Text(
+                !stats.driveNudge
+                    ? '切っています'
+                    : drive.active
+                          ? '乗り物への乗り降りを見ています（位置情報は使いません）'
+                          : '身体活動認識の許可がありません。もう一度ONにすると聞き直します',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: drive.active || !stats.driveNudge
+                      ? c.textDim
+                      : c.accentNap,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '眠気の兆候を検知するものではありません。'
+              '運転するか休憩するかの判断は、必ずご自身で。',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

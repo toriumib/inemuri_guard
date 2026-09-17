@@ -8,6 +8,7 @@ import 'screens/home_shell.dart';
 import 'services/ad_service.dart';
 import 'services/alarm_service.dart';
 import 'services/breathing_detector.dart';
+import 'services/drive_nudge.dart';
 import 'services/drowsiness_detector.dart';
 import 'services/hydration_service.dart';
 import 'services/nap_timer_service.dart';
@@ -49,6 +50,8 @@ Future<void> main() async {
   }
 
   final nudge = NudgeService();
+  // 車に乗り続けていたら休憩を勧める。通知の初期化が終わってから。
+  final drive = DriveNudgeService(notifications);
 
   // 予約通知に頼る2つは、通知の初期化が終わってから。
   final pomodoro = PomodoroService(notifications);
@@ -66,6 +69,7 @@ Future<void> main() async {
       pomodoro: pomodoro,
       hydration: hydration,
       nudge: nudge,
+      drive: drive,
       adService: adService,
       notifications: notifications,
     ),
@@ -79,6 +83,7 @@ class InemuriGuardApp extends StatelessWidget {
   final PomodoroService pomodoro;
   final HydrationService hydration;
   final NudgeService nudge;
+  final DriveNudgeService drive;
   final AdService adService;
   final NotificationService notifications;
   const InemuriGuardApp({
@@ -89,6 +94,7 @@ class InemuriGuardApp extends StatelessWidget {
     required this.pomodoro,
     required this.hydration,
     required this.nudge,
+    required this.drive,
     required this.adService,
     required this.notifications,
   });
@@ -103,6 +109,7 @@ class InemuriGuardApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: pomodoro),
         ChangeNotifierProvider.value(value: hydration),
         ChangeNotifierProvider.value(value: nudge),
+        ChangeNotifierProvider.value(value: drive),
         Provider.value(value: adService),
         Provider.value(value: notifications),
         ChangeNotifierProvider(create: (_) => AlarmService(notifications)),

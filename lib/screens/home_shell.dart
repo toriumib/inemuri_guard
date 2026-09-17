@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../services/ad_service.dart';
 import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
+import '../services/drive_nudge.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/hydration_service.dart';
 import '../services/nap_timer_service.dart';
@@ -12,6 +15,7 @@ import '../services/nudge_service.dart';
 import '../services/pomodoro_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
+import '../services/torch.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_hero.dart';
 import 'detect_screen.dart';
@@ -46,6 +50,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         context.read<PomodoroService>().onBackground();
       case AppLifecycleState.resumed:
         detector.handleAppResumed();
+        // 車検知の許可を設定で出した直後はここで拾う（起動時に断られて
+        // いた場合の再挑戦）。
+        _syncDriveNudge();
         // 通知アクセスの許可画面から戻ってきた場合をここでも拾う。
         // 設定タブを開いていないと気づけない作りだと、許可したのに
         // 効いていない状態のまま放置される。
@@ -81,6 +88,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       },
     );
     final stats = context.read<StatsService>();
+    // ライト点滅の設定を鳴らし側へ反映する。設定を変えたときも
+    // SettingsScreen が同じものを書き込む。
+    context.read<AlarmService>().useTorch =
+        stats.torchOnAlarm && Torch.isSupported;
+    // 車に乗り続けていたら休憩を勧める。ポップアップはここで出す。
+    final drive = context.read<DriveNudgeService>();
+    drive.onSuggest = _showBreakSuggestion;
+    _syncDriveNudge();
     if (!stats.isPremium) {
       _banner = context.read<AdService>().createBanner(
         onLoaded: () => setState(() {}),
@@ -106,6 +121,56 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _banner?.dispose();
     super.dispose();
+  }
+
+  /// 車検知の設定をサービスへ反映する。許可を断ったままのときも、
+  /// 設定画面や再開のたびにここを通るので、許可すれば効き始める。
+  void _syncDriveNudge() {
+    final drive = context.read<DriveNudgeService>();
+    final stats = context.read<StatsService>();
+    if (stats.driveNudge && !drive.active) {
+      drive.start();
+    } else if (!stats.driveNudge && drive.active) {
+      drive.stop();
+    }
+  }
+
+  /// 乗り物に乗り続けているときの休憩の勧め。
+  /// 開いているときだけ出るポップアップ。閉じる操作を運転中にさせる
+  /// ことがないよう、15秒で勝手に消える。背面にいるときは
+  /// ポップアップの代わりに通知で届く。
+  Future<void> _showBreakSuggestion() async {
+    if (!mounted) return;
+    final c = AppColors.of(context);
+    var closed = false;
+    void close() {
+      if (closed) return;
+      closed = true;
+      if (mounted) Navigator.of(context).pop();
+    }
+
+    final autoClose = Timer(const Duration(seconds: 15), close);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.local_cafe_outlined, color: c.accentNap),
+        title: const Text('休憩をおすすめします'),
+        content: const Text(
+          '乗り物に乗り続けています。眠くなる前に、安全な場所で休憩してください。\n'
+          '（このお知らせは15秒で消えます）',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              closed = true;
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('わかりました'),
+          ),
+        ],
+      ),
+    );
+    autoClose.cancel();
   }
 
   @override

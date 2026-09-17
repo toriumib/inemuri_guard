@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'notification_service.dart';
+import 'torch.dart';
 
 enum AlarmTone { chime, siren, bell }
 
@@ -60,6 +61,11 @@ class AlarmService extends ChangeNotifier {
   AlarmTone tone = AlarmTone.chime;
   bool get isFiring => _repeatTimer != null;
 
+  /// アラーム中に外側のライト（フラッシュLED）も点滅させるか。
+  /// 画面の白黒点滅と同じ明暗で起こす仕組みの、端末の外側ぶん。
+  /// 設定（StatsService.torchOnAlarm）と同期される。
+  bool useTorch = true;
+
   void setTone(AlarmTone t) {
     tone = t;
     notifyListeners();
@@ -79,6 +85,7 @@ class AlarmService extends ChangeNotifier {
     unawaited(_burst().catchError((_) {}));
     _repeatTimer = Timer.periodic(tone.gap, (_) => _burst());
     _startVibration();
+    if (useTorch) unawaited(Torch.strobe());
     notifyListeners();
   }
 
@@ -86,6 +93,7 @@ class AlarmService extends ChangeNotifier {
     _repeatTimer?.cancel();
     _repeatTimer = null;
     await _loopPlayer.stop();
+    await Torch.stop();
     Vibration.cancel();
     notifications.cancelAlarm();
     notifyListeners();
@@ -106,6 +114,7 @@ class AlarmService extends ChangeNotifier {
   @override
   void dispose() {
     _repeatTimer?.cancel();
+    Torch.stop();
     _loopPlayer.dispose();
     _previewPlayer.dispose();
     super.dispose();
