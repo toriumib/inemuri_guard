@@ -29,6 +29,8 @@ class StatsService extends ChangeNotifier {
   static const _kEyeThresholdSeconds = 'eye_threshold_seconds';
   static const _kAutoStart = 'auto_start_detection';
   static const _kWatchBridge = 'watch_bridge_beta';
+  static const _kTorchOnAlarm = 'torch_on_alarm';
+  static const _kDriveNudge = 'drive_nudge';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
   static const _kNapsAllTime = 'stats_naps_all_time';
@@ -55,6 +57,15 @@ class StatsService extends ChangeNotifier {
   /// この道具の使い方なので既定は ON。切りたい人のために設定に置く。
   bool autoStartDetection = true;
   bool watchBridge = true;
+
+  /// アラーム中、外側のライト（フラッシュLED）も点滅させるか。
+  /// まぶた越しの明暗で気づきやすくなる一方、光は部屋へ広がるので
+  /// 周りにいるときは切ってもらう前提で説明を付けてある。
+  bool torchOnAlarm = true;
+
+  /// 車など乗り物に乗り続けていたら休憩を勧めるか。既定は ON。
+  /// 権限（身体活動認識）はこの設定を ON にしたときに一度だけ聞く。
+  bool driveNudge = true;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -90,6 +101,8 @@ class StatsService extends ChangeNotifier {
     eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
     autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
+    torchOnAlarm = prefs.getBool(_kTorchOnAlarm) ?? true;
+    driveNudge = prefs.getBool(_kDriveNudge) ?? true;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));
@@ -189,6 +202,20 @@ class StatsService extends ChangeNotifier {
     watchBridge = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWatchBridge, value);
+    notifyListeners();
+  }
+
+  Future<void> setTorchOnAlarm(bool value) async {
+    torchOnAlarm = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kTorchOnAlarm, value);
+    notifyListeners();
+  }
+
+  Future<void> setDriveNudge(bool value) async {
+    driveNudge = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDriveNudge, value);
     notifyListeners();
   }
 

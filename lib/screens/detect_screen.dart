@@ -8,6 +8,7 @@ import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
+import '../services/torch.dart';
 import '../theme/app_theme.dart';
 import '../widgets/camera_stage.dart';
 import '../widgets/range_slider_row.dart';
@@ -285,6 +286,23 @@ class _DetectScreenState extends State<DetectScreen> {
                   ],
                   const Divider(height: 28),
                   _ToneRow(alarm: alarm),
+                  if (Torch.isSupported) ...[
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text('起こすとき、外側のライトも光らせる'),
+                      subtitle: const Text(
+                        'フラッシュLEDを点滅させて、まぶた越しの明暗で気づきやすくします。'
+                        '光は周りから見えるので、人のいる場所では切ってください。',
+                      ),
+                      value: stats.torchOnAlarm,
+                      onChanged: (v) async {
+                        await stats.setTorchOnAlarm(v);
+                        alarm.useTorch = v;
+                      },
+                    ),
+                  ],
                   if (detector.state == DetectorState.denied) ...[
                     const SizedBox(height: 12),
                     Text(

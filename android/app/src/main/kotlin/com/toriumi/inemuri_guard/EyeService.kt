@@ -59,9 +59,13 @@ class EyeService : Service() {
         /** 前面に戻るのでカメラを手放す。Flutter 側がプレビューに使う。 */
         const val ACTION_RELEASE = "com.toriumi.inemuri_guard.RELEASE_EYE"
         const val ACTION_STOP = "com.toriumi.inemuri_guard.STOP_EYE"
+        /** アラーム用にライトを点す/消す（背面カメラを自分で持っている間）。 */
+        const val ACTION_TORCH = "com.toriumi.inemuri_guard.TORCH_EYE"
         const val EXTRA_TEXT = "text"
         /** "back" なら背面カメラ、それ以外は前面。 */
         const val EXTRA_LENS = "lens"
+        /** ライトを点すか。 */
+        const val EXTRA_TORCH_ON = "torchOn"
 
         private const val CHANNEL_ID = "eye_watch"
         private const val NOTIFICATION_ID = 4711
@@ -146,6 +150,10 @@ class EyeService : Service() {
             ACTION_RELEASE -> {
                 closeCamera()
                 startForegroundWithType("画面を開いています")
+            }
+            ACTION_TORCH -> {
+                val on = intent.getBooleanExtra(EXTRA_TORCH_ON, false)
+                applyTorch(on)
             }
             else -> {
                 // 前面にいるうちに前景化だけしておく。カメラはまだ Flutter 側が
@@ -403,6 +411,41 @@ class EyeService : Service() {
             Log.d(TAG, "解析中 顔なし (${lastAnalysisMs}ms)")
         } else {
             Log.d(TAG, "解析中 目の開き 左=$left 右=$right (${lastAnalysisMs}ms)")
+        }
+    }
+
+    /**
+     * 開いているカメラのライトを、撮影要求を作り直して点す/消す。
+     *
+     * setTorchMode は「そのカメラを誰も開いていない」間しか効かない。
+     * 背面カメラで見張っている最中（この Service がカメラを持っている
+     * とき）はここを通る。セッションが無い（前面では Flutter 側が持って
+     * いる等）なら false を返し、呼び出し側は setTorchMode へ戻る。
+     */
+    fun applyTorch(on: Boolean): Boolean {
+        val s = session ?: return false
+        val device = cameraDevice ?: return false
+        val surface = reader?.surface ?: return false
+        val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val hasFlash = try {
+            cm.getCameraCharacteristics(device.id)
+                .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } catch (_: Exception) { false }
+        if (!hasFlash) return false
+        return try {
+            val req = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                addTarget(surface)
+                afMode?.let { set(CaptureRequest.CONTROL_AF_MODE, it) }
+                set(
+                    CaptureRequest.FLASH_MODE,
+                    if (on) CaptureRequest.FLASH_MODE_TORCH else CaptureRequest.FLASH_MODE_OFF
+                )
+            }
+            s.setRepeatingRequest(req.build(), null, handler)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "ライトを${if (on) "点せ" else "消せ"}なかった", e)
+            false
         }
     }
 

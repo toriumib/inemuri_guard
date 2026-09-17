@@ -16,6 +16,12 @@
          SCHEDULE_EXACT_ALARM は入れない。数分の遅れを許す inexact で足りるし、
          Play のポリシー上も慎重に扱われる権限なので。 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- 車に乗り続けていたら休憩を勧めるための身体活動認識。
+         Android 10 以降は実行時権限。OS から受け取るのは「乗り物に
+         乗っているか」だけで、位置情報は扱わない。下の gms 側は
+         Android 9 以前で Play services 経由で使うときの宣言。 -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
@@ -59,6 +65,11 @@
             android:foregroundServiceType="camera|microphone"
             android:exported="false"
             android:stopWithTask="true"/>
+
+        <!-- 乗り物への乗り降りを OS から受け取る口。中身は Dart へ渡すだけ。 -->
+        <receiver
+            android:name=".DriveReceiver"
+            android:exported="false"/>
 
         <!-- Slack/Teams/メールの通知で起こすための受け口。
              通知アクセスはユーザーが設定画面で明示的に許可しないと有効に

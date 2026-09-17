@@ -58,6 +58,16 @@ class NotificationService implements NotificationScheduler {
       playSound: true,
       enableVibration: true,
     );
+    // 車に乗り続けているときの休憩の勧め。出すのはほどほどに目立つ
+    // ヘッドアップで、居眠りアラームのような全画面にはしない。
+    const driveBreak = AndroidNotificationChannel(
+      NotificationChannels.driveBreak,
+      '休憩の勧め',
+      description: '車など乗り物に乗り続けているときに、休憩をすすめる通知',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -65,6 +75,7 @@ class NotificationService implements NotificationScheduler {
     await android?.createNotificationChannel(channel);
     await android?.createNotificationChannel(pomodoro);
     await android?.createNotificationChannel(hydration);
+    await android?.createNotificationChannel(driveBreak);
     await android?.requestNotificationsPermission();
     // zonedSchedule は TZDateTime しか受け付けない。絶対時刻を UTC で渡す
     // ので、端末のゾーン名を調べる必要はない。
@@ -165,5 +176,27 @@ class NotificationService implements NotificationScheduler {
   Future<void> cancelAlarm() async {
     if (!_ready) return;
     await _plugin.cancel(NotificationIds.alarm);
+  }
+
+  /// 車など乗り物に乗り続けているときの休憩の勧め。
+  /// アプリを開いているときはポップアップが出るので、これは主に
+  /// 背面にいる間の届け口。
+  Future<void> fireBreakSuggestion() async {
+    if (!_ready) return;
+    const details = AndroidNotificationDetails(
+      NotificationChannels.driveBreak,
+      '休憩の勧め',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.recommendation,
+    );
+    await _plugin.show(
+      NotificationIds.driveBreak,
+      '休憩をおすすめします',
+      '乗り物に乗り続けています。眠くなる前に、安全な場所で休憩してください。',
+      const NotificationDetails(android: details),
+    );
   }
 }

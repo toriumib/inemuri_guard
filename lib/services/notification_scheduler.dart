@@ -31,6 +31,9 @@ class NotificationIds {
   /// ポモドーロの区間終了。
   static const pomodoro = 1100;
 
+  /// 車に乗り続けているときの休憩の勧め。
+  static const driveBreak = 1200;
+
   /// 水分補給。今日の残り＋明日ぶんを先に予約するので幅を取る。
   static const hydrationFrom = 2000;
   static const hydrationToExclusive = 2100;
@@ -45,6 +48,9 @@ class NotificationChannels {
 
   /// ポモドーロ。音と振動はあるが全画面にはしない。
   static const pomodoro = 'pomodoro';
+
+  /// 車に乗り続けているときの休憩の勧め。ヘッドアップで出す。
+  static const driveBreak = 'drive_break';
 
   /// 水分補給。控えめ。ヘッドアップ無し。
   static const hydration = 'hydration';
