@@ -1,7 +1,9 @@
 package com.toriumi.inemuri_guard
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
@@ -18,11 +20,18 @@ import io.flutter.plugin.common.MethodChannel
  * - MethodChannel `inemuri/eye` … 開始・停止・稼働確認
  * - EventChannel  `inemuri/eye_events` … 1フレームごとの目の開き具合
  * - MethodChannel `inemuri/torch` … 外側のライト（フラッシュLED）の点滅
+ * - MethodChannel `inemuri/alarm_keys` ＋ EventChannel `inemuri/alarm_key_events` …
+ *   アラーム中だけ、音量キー・ホーム／履歴キーを「止めたい」の合図として受ける
  *
  * 判定（しきい値・PERCLOS）は Dart 側に置いたままにしている。
  * 同じ判断を native と Dart の二か所に書くと、必ず片方だけ直して食い違うため。
  */
 class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
+    companion object {
+        /** SDK に定数が無い（AudioManager の隠し定数）。音量が変わるたびに OS が送る。 */
+        private const val VOLUME_CHANGED = "android.media.VOLUME_CHANGED_ACTION"
+    }
+
 
     private val method = MethodChannel(messenger, "inemuri/eye")
     private val events = EventChannel(messenger, "inemuri/eye_events")
@@ -107,6 +116,30 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             }
         }
 
+        // ── 外からアラームを止める（音量キー・ホーム／履歴キー） ──
+        // 別のアプリを前に出しているとき、アプリに戻らずに止めたい、への答え。
+        // 押せる＝起きているので、どのキーでも止めてよい。電源キーは画面が
+        // 勝手に消えたときと区別できない（車で裏向きに置いて画面が消えただけで
+        // アラームが止まる）ので、ここでは受けない。
+        MethodChannel(messenger, "inemuri/alarm_keys").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "watch" -> { watchKeys(); result.success(true) }
+                "unwatch" -> { unwatchKeys(); result.success(true) }
+                else -> result.notImplemented()
+            }
+        }
+        EventChannel(messenger, "inemuri/alarm_key_events").setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(args: Any?, sink: EventChannel.EventSink?) {
+                    keysSink = sink
+                }
+
+                override fun onCancel(args: Any?) {
+                    keysSink = null
+                }
+            }
+        )
+
         // 通知で起こす側の流し口。目の値とは別の口にしてある。
         EventChannel(messenger, "inemuri/nudge_events").setStreamHandler(
             object : EventChannel.StreamHandler {
@@ -147,6 +180,49 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                 EyeService.errorSink = null
             }
         })
+    }
+
+    private var keysSink: EventChannel.EventSink? = null
+    private var keysReceiver: BroadcastReceiver? = null
+
+    /** アラームが鳴っている間だけ、音量の変化とホーム／履歴キーを聞く。 */
+    private fun watchKeys() {
+        if (keysReceiver != null) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val why = when (i.action) {
+                    VOLUME_CHANGED -> "volume"
+                    Intent.ACTION_CLOSE_SYSTEM_DIALOGS -> {
+                        // 通知シェードの開閉や画面消灯でも飛ぶ放送なので、
+                        // ホームと履歴のキーだけを本人の操作として受ける。
+                        val reason = i.getStringExtra("reason")
+                        if (reason == "homekey" || reason == "recentapps") "home" else return
+                    }
+                    else -> return
+                }
+                main.post { keysSink?.success(why) }
+            }
+        }
+        val f = IntentFilter().apply {
+            addAction(VOLUME_CHANGED)
+            addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
+        }
+        // どちらも OS だけが送れる保護付きの放送。Android 14 以降は
+        // 動的登録に export の明示が要る。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(r, f, Context.RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            context.registerReceiver(r, f)
+        }
+        keysReceiver = r
+    }
+
+    private fun unwatchKeys() {
+        keysReceiver?.let {
+            try { context.unregisterReceiver(it) } catch (_: Exception) {}
+        }
+        keysReceiver = null
     }
 
     /** ライトを持っているカメラの id。背面（外側）を優先する。 */

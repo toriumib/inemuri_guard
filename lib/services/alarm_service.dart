@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
+import 'alarm_keys.dart';
 import 'notification_service.dart';
 import 'torch.dart';
 
@@ -66,6 +67,11 @@ class AlarmService extends ChangeNotifier {
   /// 車で使うとき（StatsService.carMode）だけ ON。机では光が周りに漏れる。
   bool useTorch = false;
 
+  /// アプリの外から「止めたい」が来たとき（音量キー・ホーム／履歴キー・
+  /// 通知の「止める」）。鳴らし方だけでなく、鳴らしている理由（検知器・
+  /// 仮眠タイマー）も畳む必要があるので、HomeShell が差し込む。
+  void Function(String why)? onDismissRequested;
+
   void setTone(AlarmTone t) {
     tone = t;
     notifyListeners();
@@ -86,6 +92,7 @@ class AlarmService extends ChangeNotifier {
     _repeatTimer = Timer.periodic(tone.gap, (_) => _burst());
     _startVibration();
     if (useTorch) unawaited(Torch.strobe());
+    unawaited(AlarmKeys.watch((why) => onDismissRequested?.call(why)));
     notifyListeners();
   }
 
@@ -94,6 +101,7 @@ class AlarmService extends ChangeNotifier {
     _repeatTimer = null;
     await _loopPlayer.stop();
     await Torch.stop();
+    unawaited(AlarmKeys.unwatch());
     Vibration.cancel();
     notifications.cancelAlarm();
     notifyListeners();

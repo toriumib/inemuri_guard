@@ -1,3 +1,6 @@
+import 'dart:isolate';
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -15,19 +18,44 @@ import 'notification_scheduler.dart';
 /// with FLAG_LOCAL_ONLY, which tells Android not to bridge it to a paired
 /// watch (the phone still vibrates normally). Set from StatsService on
 /// startup and whenever the user flips the 設定 toggle.
+/// 通知の「止める」ボタンは、アプリを開かずに別の isolate で届く。
+/// そこからは UI もサービスも触れないので、名前つきの port で本体へ投げる。
+@pragma('vm:entry-point')
+void onNotificationActionInBackground(NotificationResponse response) {
+  if (response.actionId != NotificationService.stopActionId) return;
+  IsolateNameServer.lookupPortByName(
+    NotificationService.stopPortName,
+  )?.send('stop');
+}
+
 class NotificationService implements NotificationScheduler {
   static const _channelId = NotificationChannels.alarm;
   static const _flagLocalOnly = 0x100; // Notification.FLAG_LOCAL_ONLY
+  static const stopActionId = 'stop';
+  static const stopPortName = 'inemuri_guard/alarm_stop';
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _ready = false;
   bool bridgeToWatch = true;
 
+  /// 通知の「止める」が押されたとき。HomeShell が差し込む（鳴らしている
+  /// 理由——検知器・仮眠タイマー——まで畳む必要があるため）。
+  void Function()? onStopRequested;
+  final ReceivePort _stopPort = ReceivePort();
+
   Future<void> init() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(
       const InitializationSettings(android: androidInit),
+      onDidReceiveNotificationResponse: (r) {
+        if (r.actionId == stopActionId) onStopRequested?.call();
+      },
+      onDidReceiveBackgroundNotificationResponse:
+          onNotificationActionInBackground,
     );
+    IsolateNameServer.removePortNameMapping(stopPortName);
+    IsolateNameServer.registerPortWithName(_stopPort.sendPort, stopPortName);
+    _stopPort.listen((_) => onStopRequested?.call());
 
     const channel = AndroidNotificationChannel(
       _channelId,
@@ -163,6 +191,15 @@ class NotificationService implements NotificationScheduler {
       additionalFlags: bridgeToWatch
           ? null
           : Int32List.fromList([_flagLocalOnly]),
+      // アプリに戻らずに止められるように。押すと通知も消える。
+      actions: const [
+        AndroidNotificationAction(
+          stopActionId,
+          '止める',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
     );
     await _plugin.show(
       NotificationIds.alarm,

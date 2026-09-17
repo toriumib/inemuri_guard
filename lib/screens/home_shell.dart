@@ -8,6 +8,7 @@ import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/hydration_service.dart';
 import '../services/nap_timer_service.dart';
+import '../services/notification_service.dart';
 import '../services/nudge_service.dart';
 import '../services/pomodoro_service.dart';
 import '../services/sleep_log_service.dart';
@@ -80,6 +81,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         context.read<AlarmService>().start(reason: '$app の通知が届きました');
       },
     );
+    // アプリの外から止める道（音量キー・ホーム／履歴キー・通知の「止める」）。
+    // 別のアプリを前に出したまま鳴ったとき、戻ってこなくても消せる。
+    context.read<AlarmService>().onDismissRequested = _dismissFromOutside;
+    context.read<NotificationService>().onStopRequested = () =>
+        _dismissFromOutside('notification');
     final stats = context.read<StatsService>();
     if (!stats.isPremium) {
       _banner = context.read<AdService>().createBanner(
@@ -106,6 +112,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _banner?.dispose();
     super.dispose();
+  }
+
+  /// 外から「止めたい」が来た。押せている＝起きているので、鳴っている
+  /// ものを全部畳む。目のアラームは「目を開けるまで止まらない」が原則
+  /// だが、別のアプリを操作しているなら開いている——3分のスヌーズにする。
+  void _dismissFromOutside(String why) {
+    if (!mounted) return;
+    final alarm = context.read<AlarmService>();
+    final detector = context.read<DrowsinessDetector>();
+    final breathing = context.read<BreathingDetector>();
+    final nap = context.read<NapTimerService>();
+    final stats = context.read<StatsService>();
+    alarm.stop();
+    if (detector.alarmFiring) {
+      detector.snooze();
+      stats.bumpAlarm('外から止めた（スヌーズ 3分）');
+    }
+    if (breathing.alarmFiring) breathing.snooze();
+    if (nap.phase == NapPhase.done) nap.cancel();
   }
 
   @override
