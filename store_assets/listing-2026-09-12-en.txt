@@ -47,7 +47,15 @@ Alerts are not a substitute for sleep. Seek medical advice if strong sleepiness 
 
 Free with ads. See the app for available in-app purchases.
 
-RELEASE NOTES (v1.2.0) -- use this block for the Play "release notes" field
+RELEASE NOTES (v1.3.0) -- use this block for the Play "release notes" field
+- New "Using it in a car": when drowsiness is detected, it tells you to rest at the next service area, parking lot or safe shoulder, with a map link to nearby parking
+- In car mode the rear flash LED strobes during the alarm (for phones mounted screen-away, watching with the rear camera)
+- Keep Maps or any other app in front while it watches ("Open Maps" button)
+- Stop the alarm without returning to the app: the "Stop" button on the notification, a volume button, or the home button
+- The alarm won't stop until you open your eyes (it clears itself after 3 s of open eyes); the screen strobes white at maximum brightness meanwhile
+- Purchases merged into one "Premium" (no ads, all themes, sender filter). Existing buyers are Premium automatically
+
+RELEASE NOTES (v1.2.0 -- never published, folded into 1.3.0)
 - The alarm won't stop until you open your eyes (it clears itself after 3 s of open eyes)
 - While it rings, the screen goes to maximum brightness and strobes white so the light gets through closed eyelids
 - Purchases merged into one "Premium" (no ads, all themes, sender filter for wake-up notifications). If you already bought ad removal or a theme, you're Premium automatically
