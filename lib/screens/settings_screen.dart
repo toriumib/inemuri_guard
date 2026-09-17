@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../screens/terms_gate.dart';
 import '../services/notification_service.dart';
 import '../services/nudge_service.dart';
 import '../services/purchase_service.dart';
@@ -574,6 +576,26 @@ class _AboutCard extends StatelessWidget {
               '確実に固定し、道路交通法など各地域の法令に従ってご利用ください。'
               '眠気を感じたら、アプリの反応にかかわらず安全な場所に停車して休んでください。',
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 4,
+              children: [
+                TextButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse(TermsGate.url),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: const Text('利用規約'),
+                ),
+                TextButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse(TermsGate.privacyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: const Text('プライバシーポリシー'),
+                ),
+              ],
             ),
           ],
         ),

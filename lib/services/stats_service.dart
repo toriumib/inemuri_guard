@@ -30,6 +30,7 @@ class StatsService extends ChangeNotifier {
   static const _kAutoStart = 'auto_start_detection';
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kCarMode = 'car_mode';
+  static const _kTermsAccepted = 'terms_accepted_v';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
   static const _kNapsAllTime = 'stats_naps_all_time';
@@ -61,6 +62,10 @@ class StatsService extends ChangeNotifier {
   /// 案内（画面のカードと通知）を出し、アラーム中は外側のライトも点滅させ、
   /// マップを開いたまま見張るためのボタンを出す。既定は OFF（机で使う人が多い）。
   bool carMode = false;
+
+  /// 同意した利用規約の版。0 は未同意。TermsGate.version より小さければ
+  /// 起動時にもう一度同意画面を出す。
+  int termsAcceptedVersion = 0;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -97,6 +102,7 @@ class StatsService extends ChangeNotifier {
     autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
+    termsAcceptedVersion = prefs.getInt(_kTermsAccepted) ?? 0;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));
@@ -196,6 +202,13 @@ class StatsService extends ChangeNotifier {
     watchBridge = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWatchBridge, value);
+    notifyListeners();
+  }
+
+  Future<void> acceptTerms(int version) async {
+    termsAcceptedVersion = version;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kTermsAccepted, version);
     notifyListeners();
   }
 

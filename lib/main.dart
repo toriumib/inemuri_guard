@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
+import 'screens/terms_gate.dart';
 import 'services/ad_service.dart';
 import 'services/alarm_service.dart';
 import 'services/breathing_detector.dart';
@@ -124,7 +125,13 @@ class InemuriGuardApp extends StatelessWidget {
           theme: AppTheme.lightFor(stats.selectedSkin),
           darkTheme: AppTheme.darkFor(stats.selectedSkin),
           themeMode: ThemeMode.system,
-          home: const HomeShell(),
+          // 同意するまで HomeShell を作らない。HomeShell の initState が
+          // 自動開始を担うので、同意→初回のカメラ許可、の順になる。
+          home: stats.termsAcceptedVersion >= TermsGate.version
+              ? const HomeShell()
+              : TermsGate(
+                  onAccept: () => stats.acceptTerms(TermsGate.version),
+                ),
         ),
       ),
     );
