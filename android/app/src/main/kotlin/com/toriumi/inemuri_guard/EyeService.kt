@@ -95,6 +95,16 @@ class EyeService : Service() {
         @Volatile
         var isRunning: Boolean = false
             private set
+
+        /** 動いている Service 本体。EyePlugin がライトの点滅で直接呼ぶ。 */
+        @Volatile
+        var instance: EyeService? = null
+            private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
     }
 
     private var cameraDevice: CameraDevice? = null
@@ -406,6 +416,41 @@ class EyeService : Service() {
         }
     }
 
+    /**
+     * 開いているカメラのライトを、撮影要求を作り直して点す/消す。
+     *
+     * setTorchMode は「そのカメラを誰も開いていない」間しか効かない。
+     * 背面カメラで見張っている最中（この Service がカメラを持っている
+     * とき）はここを通る。セッションが無い（前面では Flutter 側が持って
+     * いる等）なら false を返し、呼び出し側は setTorchMode へ戻る。
+     */
+    fun applyTorch(on: Boolean): Boolean {
+        val s = session ?: return false
+        val device = cameraDevice ?: return false
+        val surface = reader?.surface ?: return false
+        val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val hasFlash = try {
+            cm.getCameraCharacteristics(device.id)
+                .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } catch (_: Exception) { false }
+        if (!hasFlash) return false
+        return try {
+            val req = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                addTarget(surface)
+                afMode?.let { set(CaptureRequest.CONTROL_AF_MODE, it) }
+                set(
+                    CaptureRequest.FLASH_MODE,
+                    if (on) CaptureRequest.FLASH_MODE_TORCH else CaptureRequest.FLASH_MODE_OFF
+                )
+            }
+            s.setRepeatingRequest(req.build(), null, handler)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "ライトを${if (on) "点せ" else "消せ"}なかった", e)
+            false
+        }
+    }
+
     private fun closeCamera() {
         isRunning = false
         opening = false
@@ -419,6 +464,7 @@ class EyeService : Service() {
 
     override fun onDestroy() {
         closeCamera()
+        instance = null
         super.onDestroy()
     }
 }

@@ -29,6 +29,7 @@ class StatsService extends ChangeNotifier {
   static const _kEyeThresholdSeconds = 'eye_threshold_seconds';
   static const _kAutoStart = 'auto_start_detection';
   static const _kWatchBridge = 'watch_bridge_beta';
+  static const _kCarMode = 'car_mode';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
   static const _kNapsAllTime = 'stats_naps_all_time';
@@ -55,6 +56,11 @@ class StatsService extends ChangeNotifier {
   /// この道具の使い方なので既定は ON。切りたい人のために設定に置く。
   bool autoStartDetection = true;
   bool watchBridge = true;
+
+  /// 車で使うか。ON にすると、眠気を検知したとき「安全な場所で休憩」の
+  /// 案内（画面のカードと通知）を出し、アラーム中は外側のライトも点滅させ、
+  /// マップを開いたまま見張るためのボタンを出す。既定は OFF（机で使う人が多い）。
+  bool carMode = false;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -90,6 +96,7 @@ class StatsService extends ChangeNotifier {
     eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
     autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
+    carMode = prefs.getBool(_kCarMode) ?? false;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));
@@ -189,6 +196,13 @@ class StatsService extends ChangeNotifier {
     watchBridge = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWatchBridge, value);
+    notifyListeners();
+  }
+
+  Future<void> setCarMode(bool value) async {
+    carMode = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCarMode, value);
     notifyListeners();
   }
 

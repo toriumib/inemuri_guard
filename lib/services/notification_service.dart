@@ -58,6 +58,16 @@ class NotificationService implements NotificationScheduler {
       playSound: true,
       enableVibration: true,
     );
+    // 車で眠気を検知したときの休憩の案内。アラームが止まったあとも
+    // 残るので、停めてから見て、近くの駐車場を探す入口になる。
+    const restAdvice = AndroidNotificationChannel(
+      NotificationChannels.restAdvice,
+      '休憩の案内',
+      description: '車で眠気を検知したときに、安全な場所で休憩するようすすめる通知',
+      importance: Importance.high,
+      playSound: false,
+      enableVibration: false,
+    );
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -65,6 +75,7 @@ class NotificationService implements NotificationScheduler {
     await android?.createNotificationChannel(channel);
     await android?.createNotificationChannel(pomodoro);
     await android?.createNotificationChannel(hydration);
+    await android?.createNotificationChannel(restAdvice);
     await android?.requestNotificationsPermission();
     // zonedSchedule は TZDateTime しか受け付けない。絶対時刻を UTC で渡す
     // ので、端末のゾーン名を調べる必要はない。
@@ -165,5 +176,31 @@ class NotificationService implements NotificationScheduler {
   Future<void> cancelAlarm() async {
     if (!_ready) return;
     await _plugin.cancel(NotificationIds.alarm);
+  }
+
+  /// 車で眠気を検知したときの休憩の案内。マップなど別のアプリを前に
+  /// 出している間の届け口。アラーム通知（起こす側）は止めると消えるが、
+  /// これは本人が消すまで残す——停めてから読むものだから。
+  Future<void> fireRestAdvice() async {
+    if (!_ready) return;
+    const details = AndroidNotificationDetails(
+      NotificationChannels.restAdvice,
+      '休憩の案内',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: false,
+      enableVibration: false,
+      category: AndroidNotificationCategory.recommendation,
+      styleInformation: BigTextStyleInformation(
+        '眠気を検知しました。次の SA・PA、駐車場、路肩など安全な場所に停めて休んでください。'
+        'タップで開くと、近くの駐車場を地図で探せます。',
+      ),
+    );
+    await _plugin.show(
+      NotificationIds.restAdvice,
+      '休憩しましょう',
+      '眠気を検知しました。SA・PA、駐車場、路肩など安全な場所で休んでください。',
+      const NotificationDetails(android: details),
+    );
   }
 }

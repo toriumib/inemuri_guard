@@ -233,6 +233,22 @@ class DrowsinessDetector extends ChangeNotifier {
 
   CameraController? get controller => _controller;
 
+  /// アラーム中の外側のライト（フラッシュ）。前面では Flutter 側がカメラを
+  /// 持っているので、そのコントローラでライトを点す。前面カメラにはライトが
+  /// 無いので失敗し、背面（native に引き継いだ後）や見張っていないときは
+  /// コントローラが無い。どちらも false を返し、呼び出し側が setTorchMode
+  /// 経路へ回る。
+  Future<bool> setTorch(bool on) async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return false;
+    try {
+      await c.setFlashMode(on ? FlashMode.torch : FlashMode.off);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void setThresholdSeconds(int seconds) {
     closedThreshold = Duration(seconds: seconds);
   }

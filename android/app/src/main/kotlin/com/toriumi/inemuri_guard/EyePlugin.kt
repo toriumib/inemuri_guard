@@ -2,9 +2,12 @@ package com.toriumi.inemuri_guard
 
 import android.content.Context
 import android.content.Intent
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
  *
  * - MethodChannel `inemuri/eye` … 開始・停止・稼働確認
  * - EventChannel  `inemuri/eye_events` … 1フレームごとの目の開き具合
+ * - MethodChannel `inemuri/torch` … 外側のライト（フラッシュLED）の点滅
  *
  * 判定（しきい値・PERCLOS）は Dart 側に置いたままにしている。
  * 同じ判断を native と Dart の二か所に書くと、必ず片方だけ直して食い違うため。
@@ -94,6 +98,15 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             }
         }
 
+        // ── 外側のライト（フラッシュLED） ──
+        MethodChannel(messenger, "inemuri/torch").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "has" -> result.success(torchCameraId() != null)
+                "on", "off" -> result.success(setTorch(call.method == "on"))
+                else -> result.notImplemented()
+            }
+        }
+
         // 通知で起こす側の流し口。目の値とは別の口にしてある。
         EventChannel(messenger, "inemuri/nudge_events").setStreamHandler(
             object : EventChannel.StreamHandler {
@@ -134,5 +147,44 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                 EyeService.errorSink = null
             }
         })
+    }
+
+    /** ライトを持っているカメラの id。背面（外側）を優先する。 */
+    private fun torchCameraId(): String? {
+        val cm = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        var anyFlash: String? = null
+        for (id in cm.cameraIdList) {
+            try {
+                val ch = cm.getCameraCharacteristics(id)
+                if (ch.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) != true) continue
+                // 外側（背面）のライトのほうが部屋へ光が広がるので優先。
+                if (ch.get(CameraCharacteristics.LENS_FACING) ==
+                    CameraCharacteristics.LENS_FACING_BACK
+                ) return id
+                anyFlash = anyFlash ?: id
+            } catch (_: Exception) {}
+        }
+        return anyFlash
+    }
+
+    /**
+     * ライトを点す/消す。setTorchMode はカメラを開かずに済むが、
+     * 「そのカメラを誰かが開いている間」は失敗する。失敗したとき、
+     * 開いているのが自分の常駐サービス（背面で見張っている間）なら
+     * セッション経由で光らせてもらう。
+     */
+    private fun setTorch(on: Boolean): Boolean {
+        val cm = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val id = torchCameraId() ?: return false
+        return try {
+            cm.setTorchMode(id, on)
+            true
+        } catch (e: Exception) {
+            // 自分の常駐サービスが背面カメラを持っている間はここに来る。
+            // Service を startService で起こし直すと、背面にいるときに
+            // 「バックグラウンドからの起動」で蹴られるので、動いている本体を直接呼ぶ。
+            Log.d("EyePlugin", "setTorchMode できなかった（$e）。セッション経由を試す")
+            EyeService.instance?.applyTorch(on) ?: false
+        }
     }
 }

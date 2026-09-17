@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
+import '../services/notification_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
+import '../services/torch.dart';
 import '../theme/app_theme.dart';
 import '../widgets/camera_stage.dart';
 import '../widgets/range_slider_row.dart';
@@ -22,6 +25,10 @@ class DetectScreen extends StatefulWidget {
 class _DetectScreenState extends State<DetectScreen> {
   bool _wasEyeAlarming = false;
   bool _wasBreathAlarming = false;
+
+  /// 車で眠気を検知したあと、「安全な場所で休憩」の案内を出しているか。
+  /// 閉じるまで残す——鳴っている最中ではなく、停めてから読むものだから。
+  bool _restAdvice = false;
   late final DrowsinessDetector _detector;
   late final BreathingDetector _breathing;
 
@@ -32,7 +39,31 @@ class _DetectScreenState extends State<DetectScreen> {
     _breathing = context.read<BreathingDetector>();
     _detector.addListener(_sensorChanged);
     _breathing.addListener(_sensorChanged);
+    // 外側のライトの点滅は車で使うときだけ。保存値を鳴らし側へ渡す。
+    context.read<AlarmService>().useTorch =
+        context.read<StatsService>().carMode && Torch.isSupported;
+    // 前面ではカメラを持っている側（Flutter）しかライトを点せない。
+    Torch.viaController = _detector.setTorch;
     _sensorChanged();
+  }
+
+  /// 地図アプリを開く。[query] があれば近くをその語で探す（例: 駐車場）。
+  /// geo: を受けるアプリが無ければブラウザの Google マップに逃がす。
+  Future<void> _openMaps({String? query}) async {
+    final geo = Uri.parse(
+      query == null ? 'geo:0,0' : 'geo:0,0?q=${Uri.encodeComponent(query)}',
+    );
+    try {
+      if (await launchUrl(geo, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    final web = Uri.parse(
+      query == null
+          ? 'https://www.google.com/maps'
+          : 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}',
+    );
+    try {
+      await launchUrl(web, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 
   void _sensorChanged() {
@@ -62,9 +93,24 @@ class _DetectScreenState extends State<DetectScreen> {
       final firing = detector.alarmFiring;
       _wasEyeAlarming = firing;
       if (firing) {
-        alarm.start(reason: '目を閉じたままの状態を検知しました');
+        final car = stats.carMode;
+        alarm.start(
+          reason: car
+              ? '目を閉じたままの状態を検知しました。安全な場所で休憩しましょう'
+              : '目を閉じたままの状態を検知しました',
+        );
         stats.bumpAlarm('目を閉じたままの状態を検知');
         sleepLog.add(SleepEventType.detected, note: '目の開閉');
+        if (car) {
+          // 車では「起こす」で終わらせない。SA・路肩・駐車場で休む、まで言う。
+          // 画面を見ていない（マップを前に出している・裏向きに置いている）
+          // ときのために通知でも残す。
+          setState(() => _restAdvice = true);
+          if (WidgetsBinding.instance.lifecycleState !=
+              AppLifecycleState.resumed) {
+            context.read<NotificationService>().fireRestAdvice();
+          }
+        }
       } else if (!breathing.alarmFiring) {
         alarm.stop();
       }
@@ -95,6 +141,13 @@ class _DetectScreenState extends State<DetectScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_restAdvice) ...[
+            _RestAdviceCard(
+              onFindParking: () => _openMaps(query: '駐車場'),
+              onClose: () => setState(() => _restAdvice = false),
+            ),
+            const SizedBox(height: 16),
+          ],
           Card(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -205,6 +258,30 @@ class _DetectScreenState extends State<DetectScreen> {
                       ),
                     ],
                   ),
+                  if (stats.carMode) ...[
+                    const SizedBox(height: 10),
+                    // 見張りは常駐サービスで続くので、マップを前に出してよい。
+                    // それを知らないと「アプリを閉じたら止まる」と思って
+                    // 画面を切り替えられない。
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => _openMaps(),
+                        icon: const Icon(Icons.map_outlined, size: 18),
+                        label: Text(
+                          detector.state == DetectorState.watching
+                              ? 'マップを開く（見張りは続きます）'
+                              : 'マップを開く',
+                        ),
+                      ),
+                    ),
+                  ],
                   if (detector.noFaceSeen &&
                       detector.state == DetectorState.watching &&
                       detector.faceLostLong) ...[
@@ -234,18 +311,32 @@ class _DetectScreenState extends State<DetectScreen> {
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                     title: const Text('背面カメラで見張る'),
+                    // 実機（360dp・文字大きめ）では長い文が細い柱になる。
+                    // 免責の全文は設定の「このアプリについて」にあるので、ここは要点だけ。
                     subtitle: const Text(
-                      '車のスタンドに載せて運転席へ向けるときに使います。'
-                      '机の上に置いて自分に向けるなら切ったままで大丈夫です。\n'
-                      '車内では補助としてのみ。運転者の注意義務を代替するものではなく、'
-                      '見逃し・誤作動があります。運転中は端末を操作せず、確実に固定し、'
-                      '法令に従ってください。依拠による損害の責任は負いません'
-                      '（詳細は設定の「このアプリについて」）。',
+                      'スタンドに載せて画面を外へ向けるときに。机なら切ったままで。'
+                      '車内では補助としてのみ——見逃し・誤作動があり、注意義務の代わりには'
+                      'なりません（免責は設定の「このアプリについて」）。',
                     ),
                     value: stats.useBackCamera,
                     onChanged: (v) async {
                       await stats.setUseBackCamera(v);
                       await detector.setUseBackCamera(v);
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('車で使う'),
+                    subtitle: Text(
+                      '眠気を検知したら、休憩できる場所（SA・PA・駐車場・路肩）の案内を出します。'
+                      '${Torch.isSupported ? 'アラーム中は外側のライトも点滅（裏向きに置いたとき用）。' : ''}'
+                      'マップを開いたまま見張れます。',
+                    ),
+                    value: stats.carMode,
+                    onChanged: (v) async {
+                      await stats.setCarMode(v);
+                      alarm.useTorch = v && Torch.isSupported;
                     },
                   ),
                   SwitchListTile(
@@ -513,6 +604,67 @@ class _ChipThresholdPicker extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// 車で眠気を検知したあとの案内。起こすだけで終わらせず、
+/// どこで休むか（SA・PA・駐車場・路肩）と、探す入口（地図）まで出す。
+/// 運転中に操作させないため、読むだけで済む文にし、閉じるまで残す。
+class _RestAdviceCard extends StatelessWidget {
+  final VoidCallback onFindParking;
+  final VoidCallback onClose;
+  const _RestAdviceCard({required this.onFindParking, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: c.accentNap.withValues(alpha: 0.12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.local_cafe_outlined, color: c.accentNap),
+                const SizedBox(width: 8),
+                Text('休憩しましょう', style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '眠気を検知しました。次の SA・PA、駐車場、路肩など安全な場所に停めて、'
+              '15〜20分でも休んでください。眠気は根性では消えません。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.accentNap,
+                      foregroundColor: c.accentNapInk,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: onFindParking,
+                    icon: const Icon(Icons.local_parking_outlined, size: 18),
+                    label: const Text('近くの駐車場を探す'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                TextButton(onPressed: onClose, child: const Text('閉じる')),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
