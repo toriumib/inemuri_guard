@@ -27,10 +27,16 @@ class CameraStage extends StatelessWidget {
     final closed = detector.eyeOpenness < detector.openThreshold;
     final noFace = watching && detector.noFaceSeen;
     final thresholdMs = detector.closedThreshold.inMilliseconds;
+    // 棒は「鳴るまで」の目安。目でも姿勢でも、長いほうを出す。
+    final worst = detector.closedFor > detector.postureOffFor
+        ? detector.closedFor
+        : detector.postureOffFor;
     final progress = thresholdMs == 0
         ? 0.0
-        : (detector.closedFor.inMilliseconds / thresholdMs).clamp(0.0, 1.0);
+        : (worst.inMilliseconds / thresholdMs).clamp(0.0, 1.0);
 
+    final postureOff = detector.postureOffFor > Duration.zero;
+    final lookAway = detector.carMode && detector.lookAwayFor > Duration.zero;
     // バッジ。Web と同じ語で、状態がひと目で分かるように。
     final (String badge, Color badgeColor) = !watching
         ? ('STOPPED', Colors.white54)
@@ -38,6 +44,12 @@ class CameraStage extends StatelessWidget {
         ? ('WAKE UP', c.accentAlert)
         : noFace
         ? ('NO FACE', c.accentNap)
+        : postureOff
+        ? ('HEAD DOWN', c.accentAlert)
+        : lookAway
+        ? ('LOOK AWAY', c.accentNap)
+        : detector.eyesUnreadable
+        ? ('EYES HIDDEN', c.accentNap)
         : closed
         ? ('EYES CLOSED', c.accentAlert)
         : ('WATCHING', c.accentGood);
@@ -149,6 +161,12 @@ class CameraStage extends StatelessWidget {
                                 ? '目 —'
                                 : noFace
                                 ? '顔 なし'
+                                : postureOff
+                                ? '頭が傾いています'
+                                : lookAway
+                                ? 'よそ見が続いています'
+                                : detector.eyesUnreadable
+                                ? 'サングラス？ 目が読めないので頭の傾きで見張ります'
                                 : '目 ${closed ? '閉' : '開'} '
                                       '${(detector.eyeOpenness * 100).toStringAsFixed(0)}%',
                             style: const TextStyle(
@@ -227,7 +245,7 @@ class ReadoutTiles extends StatelessWidget {
         _Tile(
           label: 'EYES',
           // 顔が無いときの 100% は「開いている」ではなく「分からない」。
-          value: watching && !detector.noFaceSeen
+          value: watching && !detector.noFaceSeen && !detector.eyesUnreadable
               ? '${(detector.eyeOpenness * 100).toStringAsFixed(0)}%'
               : '—',
           hot: hot,

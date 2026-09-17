@@ -225,6 +225,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               ],
             ),
           ),
+          // 暗くて顔が消えたときだけ。鳴っている間は点滅のほうを出す。
+          IlluminateOverlay(
+            active: !anyAlarming &&
+                stats.illuminateInDark &&
+                detector.state == DetectorState.watching &&
+                detector.faceLostLong &&
+                (detector.frameLuma ?? 255) < 40,
+          ),
           AlarmFlashOverlay(active: anyAlarming),
         ],
       ),
@@ -293,7 +301,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         StatusMode.alert,
         (detector.alarmFiring || breathing.alarmFiring) ? '居眠り検知' : '仮眠タイマー',
         detector.alarmFiring
-            ? (detector.openFor > Duration.zero
+            ? (detector.alarmCause == 'posture'
+                  ? '⚠ 起きて！頭を起こしてください'
+                  : detector.openFor > Duration.zero
                   ? '目を開けたまま あと$remain秒'
                   : '⚠ 起きて！目を開けてください')
             : (breathing.alarmFiring ? '⚠ 寝息を検知しました！' : '⏰ 起床時間！'),

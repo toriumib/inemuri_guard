@@ -76,7 +76,7 @@ class EyeService : Service() {
 
         /** Dart 側へ結果を渡す口。EyePlugin が差し込む。 */
         @Volatile
-        var sink: ((faceFound: Boolean, left: Double?, right: Double?) -> Unit)? = null
+        var sink: ((faceFound: Boolean, left: Double?, right: Double?, pose: FloatArray?) -> Unit)? = null
 
         /**
          * 背面での見張りが**始められなかった/途切れた**ことを Dart へ伝える口。
@@ -380,7 +380,9 @@ class EyeService : Service() {
                     sink?.invoke(
                         f != null,
                         f?.leftEyeOpenProbability?.toDouble(),
-                        f?.rightEyeOpenProbability?.toDouble()
+                        f?.rightEyeOpenProbability?.toDouble(),
+                        // 頭の角度（度）。俯き・横倒し・脇見の判定は Dart 側。
+                        f?.let { floatArrayOf(it.headEulerAngleX, it.headEulerAngleY, it.headEulerAngleZ) }
                     )
                 }
                 .addOnFailureListener { e -> Log.w(TAG, "顔検出に失敗", e) }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vibration/vibration.dart';
 
 import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
@@ -25,6 +26,7 @@ class DetectScreen extends StatefulWidget {
 class _DetectScreenState extends State<DetectScreen> {
   bool _wasEyeAlarming = false;
   bool _wasBreathAlarming = false;
+  bool _wasLookingAway = false;
 
   /// 車で眠気を検知したあと、「安全な場所で休憩」の案内を出しているか。
   /// 閉じるまで残す——鳴っている最中ではなく、停めてから読むものだから。
@@ -44,6 +46,8 @@ class _DetectScreenState extends State<DetectScreen> {
         context.read<StatsService>().carMode && Torch.isSupported;
     // 前面ではカメラを持っている側（Flutter）しかライトを点せない。
     Torch.viaController = _detector.setTorch;
+    // 脇見の判定は車のときだけ。保存値を検知器へ渡す。
+    _detector.carMode = context.read<StatsService>().carMode;
     _sensorChanged();
   }
 
@@ -115,6 +119,14 @@ class _DetectScreenState extends State<DetectScreen> {
         alarm.stop();
       }
     }
+    // 脇見（車モード）。アラームではなく一段弱い知らせ——短い音と振動だけ。
+    if (detector.lookAwayAlert && !_wasLookingAway) {
+      alarm.preview();
+      Vibration.hasVibrator().then((has) {
+        if (has == true) Vibration.vibrate(duration: 300);
+      });
+    }
+    _wasLookingAway = detector.lookAwayAlert;
     if (breathing.alarmFiring != _wasBreathAlarming) {
       final firing = breathing.alarmFiring;
       _wasBreathAlarming = firing;
@@ -337,7 +349,19 @@ class _DetectScreenState extends State<DetectScreen> {
                     onChanged: (v) async {
                       await stats.setCarMode(v);
                       alarm.useTorch = v && Torch.isSupported;
+                      detector.carMode = v;
                     },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('暗いところでは画面で照らす'),
+                    subtitle: const Text(
+                      '暗くて顔が見つからないとき、画面を白く明るくして顔を照らします。'
+                      '顔が見つかると元に戻ります。',
+                    ),
+                    value: stats.illuminateInDark,
+                    onChanged: (v) => stats.setIlluminateInDark(v),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,

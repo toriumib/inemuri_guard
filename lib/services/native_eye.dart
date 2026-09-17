@@ -64,16 +64,17 @@ class NativeEye {
     String notificationText = '動作中',
     bool useBackCamera = false,
     void Function(bool face, double? left, double? right)? onReading,
+    void Function(double pitch, double yaw, double roll)? onPose,
     void Function(String message)? onFailed,
   }) async {
     if (!isSupported) return;
     _holders.add(holder);
     if (_running) {
-      if (onReading != null) _attach(onReading, onFailed);
+      if (onReading != null) _attach(onReading, onPose, onFailed);
       return;
     }
     try {
-      if (onReading != null) _attach(onReading, onFailed);
+      if (onReading != null) _attach(onReading, onPose, onFailed);
       await _method.invokeMethod('start', {
         'text': notificationText,
         'back': useBackCamera,
@@ -89,6 +90,7 @@ class NativeEye {
 
   static void _attach(
     void Function(bool face, double? left, double? right) onReading,
+    void Function(double pitch, double yaw, double roll)? onPose,
     void Function(String message)? onFailed,
   ) {
     _sub?.cancel();
@@ -106,6 +108,11 @@ class NativeEye {
         (e['left'] as num?)?.toDouble(),
         (e['right'] as num?)?.toDouble(),
       );
+      // 頭の角度。顔があるときだけ付いてくる。
+      final px = e['pitch'], py = e['yaw'], pz = e['roll'];
+      if (onPose != null && px is num && py is num && pz is num) {
+        onPose(px.toDouble(), py.toDouble(), pz.toDouble());
+      }
     }, onError: (Object err) => debugPrint('NativeEye stream error: $err'));
   }
 

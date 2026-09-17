@@ -242,3 +242,64 @@ class _AlarmFlashOverlayState extends State<AlarmFlashOverlay>
     );
   }
 }
+
+/// 暗くて顔が消えたときの「照明」。画面を白く、明るさを最大にして、
+/// 前面カメラに顔を見せる。アラームの点滅とは別物なので、鳴っている間は
+/// 出さない（呼び出し側で切る）。タップは下へ通す。
+class IlluminateOverlay extends StatefulWidget {
+  final bool active;
+  const IlluminateOverlay({super.key, required this.active});
+
+  @override
+  State<IlluminateOverlay> createState() => _IlluminateOverlayState();
+}
+
+class _IlluminateOverlayState extends State<IlluminateOverlay> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _brighten();
+  }
+
+  @override
+  void didUpdateWidget(covariant IlluminateOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _brighten();
+    if (!widget.active && oldWidget.active) _restore();
+  }
+
+  void _brighten() {
+    ScreenBrightness.instance
+        .setApplicationScreenBrightness(1.0)
+        .catchError((_) {});
+  }
+
+  void _restore() {
+    ScreenBrightness.instance
+        .resetApplicationScreenBrightness()
+        .catchError((_) {});
+  }
+
+  @override
+  void dispose() {
+    if (widget.active) _restore();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: Container(
+        color: Colors.white.withValues(alpha: 0.9),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(32),
+        child: const Text(
+          '暗いので画面で照らしています。\n顔が見つかると元に戻ります。',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.black54, fontSize: 15, height: 1.6),
+        ),
+      ),
+    );
+  }
+}

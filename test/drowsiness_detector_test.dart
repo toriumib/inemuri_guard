@@ -34,6 +34,10 @@ void main() {
     d = DrowsinessDetector();
     clock = _Clock();
     d.clock = clock.call;
+    // 顔が現れ、目が開いているところから始める。一度も開いた目を見て
+    // いない「閉」は信じない（サングラス対策）ので、実機と同じ順にする。
+    d.noteFaceSeen();
+    d.ingestForTest(1.0);
   });
 
   group('連続して閉じた時間で鳴らす', () {
@@ -95,6 +99,7 @@ void main() {
 
   _occlusionTests();
   _eyesOpenToStopTests();
+  _postureTests();
 
   group('スヌーズ', () {
     test('スヌーズ中は閉じ続けても鳴らない', () {
@@ -128,6 +133,8 @@ void _occlusionTests() {
     clock = _Clock();
     d.clock = clock.call;
     d.setThresholdSeconds(5);
+    d.noteFaceSeen();
+    d.ingestEyes(1.0, 1.0); // 開いた目を一度見てから
   });
 
   void feedEyes(int count, double l, double r) {
@@ -195,6 +202,8 @@ void _eyesOpenToStopTests() {
     clock = _Clock();
     d.clock = clock.call;
     d.setThresholdSeconds(5);
+    d.noteFaceSeen();
+    d.ingestForTest(1.0); // 開いた目を一度見てから
   });
 
   void feed(int count, double openness) {
@@ -234,5 +243,106 @@ void _eyesOpenToStopTests() {
     d.noteFaceLost();
     expect(d.openFor, Duration.zero);
     expect(d.alarmFiring, isTrue);
+  });
+}
+
+/// 頭の姿勢と、目が読めないとき（サングラス）。
+/// 角度は「普段からのずれ」で見る。カメラの置き方で基準が変わるため。
+void _postureTests() {
+  late DrowsinessDetector d;
+  late _Clock clock;
+
+  setUp(() {
+    d = DrowsinessDetector();
+    clock = _Clock();
+    d.clock = clock.call;
+    d.setThresholdSeconds(5);
+    d.noteFaceSeen();
+  });
+
+  /// 160ms 刻みで角度と目を流す。[open] は目の開き（既定は開いている）。
+  void feedPose(int count, double pitch, double yaw, double roll, {double open = 1.0}) {
+    for (var i = 0; i < count; i++) {
+      clock.advance(const Duration(milliseconds: 160));
+      d.ingestForTest(open);
+      d.ingestPose(pitch, yaw, roll);
+    }
+  }
+
+  test('普段の姿勢（下向き 15° のカメラ）では鳴らない', () {
+    feedPose(80, -15, 0, 0); // 約13秒。基準が -15 になるだけ
+    expect(d.alarmFiring, isFalse);
+    expect(d.postureOffFor, Duration.zero);
+  });
+
+  test('頭が落ちて（普段から 30°）しきい値の秒数続いたら鳴る。理由は姿勢', () {
+    feedPose(20, -10, 0, 0); // 普段
+    feedPose(25, -40, 0, 0); // 約4秒 落ちる
+    expect(d.alarmFiring, isFalse);
+    feedPose(10, -40, 0, 0); // 通算 約5.6秒
+    expect(d.alarmFiring, isTrue);
+    expect(d.alarmCause, 'posture');
+  });
+
+  test('横倒し（roll）でも鳴る', () {
+    feedPose(20, 0, 0, 0);
+    feedPose(40, 0, 0, 35);
+    expect(d.alarmFiring, isTrue);
+  });
+
+  test('姿勢で鳴ったら、姿勢が戻って 3 秒で止まる', () {
+    feedPose(20, 0, 0, 0);
+    feedPose(40, -40, 0, 0);
+    expect(d.alarmFiring, isTrue);
+    feedPose(10, 0, 0, 0); // 約1.6秒 戻す
+    expect(d.alarmFiring, isTrue, reason: '戻した直後はまだ');
+    feedPose(12, 0, 0, 0); // 通算 約3.5秒
+    expect(d.alarmFiring, isFalse);
+    expect(d.alarmCause, isNull);
+  });
+
+  test('落ちている最中に基準が追従しない', () {
+    feedPose(20, 0, 0, 0);
+    feedPose(200, -40, 0, 0); // 32秒 落ちたまま
+    expect(d.alarmFiring, isTrue, reason: '基準が -40 に寄っていたら鳴らなくなる');
+  });
+
+  test('脇見は車モードのときだけ。3秒で知らせ、向き直ると消える', () {
+    feedPose(20, 0, 0, 0);
+    feedPose(25, 0, 45, 0); // 約4秒 横を向く（机）
+    expect(d.lookAwayAlert, isFalse, reason: '机では横を見るのが普通');
+    d.carMode = true;
+    feedPose(10, 0, 0, 0); // 向き直る
+    feedPose(25, 0, 45, 0); // 約4秒
+    expect(d.lookAwayAlert, isTrue);
+    expect(d.alarmFiring, isFalse, reason: '脇見はアラームではなく知らせ');
+    feedPose(3, 0, 0, 0);
+    expect(d.lookAwayAlert, isFalse);
+  });
+
+  test('顔が現れてから一度も開いた目を見ていない「閉」では鳴らない（サングラス）', () {
+    // 目の値は常に 0.02、10秒で「目が読めない」になる。姿勢は普段のまま。
+    feedPose(70, 0, 0, 0, open: 0.02); // 約11秒
+    expect(d.alarmFiring, isFalse);
+    expect(d.eyesUnreadable, isTrue);
+    expect(d.closedFor, Duration.zero);
+  });
+
+  test('目が読めなくても、頭が落ちれば鳴る', () {
+    feedPose(70, 0, 0, 0, open: 0.02);
+    expect(d.eyesUnreadable, isTrue);
+    feedPose(40, -40, 0, 0, open: 0.02);
+    expect(d.alarmFiring, isTrue);
+    expect(d.alarmCause, 'posture');
+  });
+
+  test('開いた目を一度見れば、以後の閉じは普通に数える', () {
+    feedPose(70, 0, 0, 0, open: 0.02);
+    expect(d.eyesUnreadable, isTrue);
+    feedPose(5, 0, 0, 0, open: 0.9); // サングラスを外した
+    expect(d.eyesUnreadable, isFalse);
+    feedPose(40, 0, 0, 0, open: 0.0); // 約6.4秒 閉じる
+    expect(d.alarmFiring, isTrue);
+    expect(d.alarmCause, 'eyes');
   });
 }

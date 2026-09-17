@@ -31,6 +31,7 @@ class StatsService extends ChangeNotifier {
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kCarMode = 'car_mode';
   static const _kTermsAccepted = 'terms_accepted_v';
+  static const _kIlluminate = 'illuminate_in_dark';
   static const _kOwnedSkins = 'owned_skins';
   static const _kSelectedSkin = 'selected_skin';
   static const _kNapsAllTime = 'stats_naps_all_time';
@@ -66,6 +67,10 @@ class StatsService extends ChangeNotifier {
   /// 同意した利用規約の版。0 は未同意。TermsGate.version より小さければ
   /// 起動時にもう一度同意画面を出す。
   int termsAcceptedVersion = 0;
+
+  /// 暗くて顔が消えたとき、画面を白く明るくして照明代わりにするか。
+  /// 前面カメラは赤外線を持たないので、暗い部屋では画面が唯一の光源。
+  bool illuminateInDark = true;
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -103,6 +108,7 @@ class StatsService extends ChangeNotifier {
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
     termsAcceptedVersion = prefs.getInt(_kTermsAccepted) ?? 0;
+    illuminateInDark = prefs.getBool(_kIlluminate) ?? true;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));
@@ -202,6 +208,13 @@ class StatsService extends ChangeNotifier {
     watchBridge = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWatchBridge, value);
+    notifyListeners();
+  }
+
+  Future<void> setIlluminateInDark(bool value) async {
+    illuminateInDark = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kIlluminate, value);
     notifyListeners();
   }
 

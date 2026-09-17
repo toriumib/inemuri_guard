@@ -160,7 +160,7 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                 EyeService.errorSink = { message ->
                     main.post { sink?.success(mapOf("error" to message)) }
                 }
-                EyeService.sink = { faceFound, left, right ->
+                EyeService.sink = { faceFound, left, right, pose ->
                     // EventSink は必ずメインスレッドから叩く。
                     // カメラのハンドラスレッドから直接呼ぶと落ちる。
                     main.post {
@@ -168,7 +168,10 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                             mapOf(
                                 "face" to faceFound,
                                 "left" to left,
-                                "right" to right
+                                "right" to right,
+                                "pitch" to pose?.get(0)?.toDouble(),
+                                "yaw" to pose?.get(1)?.toDouble(),
+                                "roll" to pose?.get(2)?.toDouble()
                             )
                         )
                     }
