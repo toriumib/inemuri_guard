@@ -5,6 +5,7 @@ import 'package:vibration/vibration.dart';
 import 'alarm_keys.dart';
 import 'notification_service.dart';
 import 'torch.dart';
+import 'voice_stop.dart';
 
 enum AlarmTone { chime, siren, bell }
 
@@ -72,6 +73,14 @@ class AlarmService extends ChangeNotifier {
   /// 仮眠タイマー）も畳む必要があるので、HomeShell が差し込む。
   void Function(String why)? onDismissRequested;
 
+  /// 鳴っている間、声（「起きた」「止めて」）でも止められるようにするか。
+  /// 設定（StatsService.voiceStop）と同期される。
+  bool useVoice = true;
+
+  /// マイクが他で使われているか（寝息検知が聞いている間）。その間は
+  /// 音声認識と取り合うので声の道は開かない。HomeShell が差し込む。
+  bool Function()? micBusy;
+
   void setTone(AlarmTone t) {
     tone = t;
     notifyListeners();
@@ -93,6 +102,10 @@ class AlarmService extends ChangeNotifier {
     _startVibration();
     if (useTorch) unawaited(Torch.strobe());
     unawaited(AlarmKeys.watch((why) => onDismissRequested?.call(why)));
+    if (useVoice && !(micBusy?.call() ?? false)) {
+      VoiceStop.instance.onStop = () => onDismissRequested?.call('voice');
+      unawaited(VoiceStop.instance.start());
+    }
     notifyListeners();
   }
 
@@ -102,6 +115,7 @@ class AlarmService extends ChangeNotifier {
     await _loopPlayer.stop();
     await Torch.stop();
     unawaited(AlarmKeys.unwatch());
+    unawaited(VoiceStop.instance.stop());
     Vibration.cancel();
     notifications.cancelAlarm();
     notifyListeners();

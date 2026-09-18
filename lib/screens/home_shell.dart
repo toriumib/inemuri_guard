@@ -15,6 +15,7 @@ import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_hero.dart';
+import '../widgets/wake_up_overlay.dart';
 import 'detect_screen.dart';
 import 'improve_screen.dart';
 import 'log_screen.dart';
@@ -84,6 +85,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // アプリの外から止める道（音量キー・ホーム／履歴キー・通知の「止める」）。
     // 別のアプリを前に出したまま鳴ったとき、戻ってこなくても消せる。
     context.read<AlarmService>().onDismissRequested = _dismissFromOutside;
+    // 声で止める。寝息検知がマイクを使っている間は開かない。
+    context.read<AlarmService>().useVoice =
+        context.read<StatsService>().voiceStop;
+    context.read<AlarmService>().micBusy = () =>
+        context.read<BreathingDetector>().state == MicState.listening;
     context.read<NotificationService>().onStopRequested = () =>
         _dismissFromOutside('notification');
     final stats = context.read<StatsService>();
@@ -112,6 +118,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _banner?.dispose();
     super.dispose();
+  }
+
+  /// 画面の「起きた！」／スヌーズ。目のアラームは 3 分のスヌーズ、
+  /// 仮眠は 3 分後にもう一度。
+  void _wakeUp() {
+    final alarm = context.read<AlarmService>();
+    final detector = context.read<DrowsinessDetector>();
+    final breathing = context.read<BreathingDetector>();
+    final nap = context.read<NapTimerService>();
+    final stats = context.read<StatsService>();
+    alarm.stop();
+    if (detector.alarmFiring) {
+      detector.snooze();
+      stats.bumpAlarm('スヌーズ 3分');
+    } else if (breathing.alarmFiring) {
+      breathing.snooze();
+      stats.bumpAlarm('スヌーズ 3分');
+    } else {
+      nap.snooze();
+    }
   }
 
   /// 外から「止めたい」が来た。押せている＝起きているので、鳴っている
@@ -156,6 +182,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         detector.alarmFiring ||
         breathing.alarmFiring ||
         nap.phase == NapPhase.done;
+    final canDismiss =
+        anyAlarming && !(detector.alarmFiring && !detector.faceLostLong);
 
     final (mode, label, value) = _status(
       detector,
@@ -194,23 +222,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                               await detector.start();
                             }
                           },
-                    // 目のアラーム中はスヌーズを出さない——目を開ければ止まる。
-                    // ただしカメラが顔を見失っているときは止めようが無いので出す。
-                    onSnooze: anyAlarming &&
-                            !(detector.alarmFiring && !detector.faceLostLong)
-                        ? () {
-                            alarm.stop();
-                            if (detector.alarmFiring) {
-                              detector.snooze();
-                              stats.bumpAlarm('スヌーズ 3分');
-                            } else if (breathing.alarmFiring) {
-                              breathing.snooze();
-                              stats.bumpAlarm('スヌーズ 3分');
-                            } else {
-                              nap.snooze();
-                            }
-                          }
-                        : null,
+                    // 目・姿勢のアラーム中はスヌーズを出さない——目を開ける／
+                    // 姿勢を戻せば止まる。顔を見失っているときだけ出す。
+                    onSnooze: canDismiss ? _wakeUp : null,
                   ),
                 ),
                 Expanded(
@@ -234,6 +248,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 (detector.frameLuma ?? 255) < 40,
           ),
           AlarmFlashOverlay(active: anyAlarming),
+          // 寝ぼけた手で押せる大きさの「起きた！」。点滅の上に載せる。
+          WakeUpOverlay(
+            active: anyAlarming,
+            message: value,
+            onWake: canDismiss ? _wakeUp : null,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

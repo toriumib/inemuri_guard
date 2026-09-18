@@ -16,6 +16,9 @@
          SCHEDULE_EXACT_ALARM は入れない。数分の遅れを許す inexact で足りるし、
          Play のポリシー上も慎重に扱われる権限なので。 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- 画面ロック中に鳴ったら、通知ではなくこのアプリの画面（大きな「起きた！」）を出す。
+         Android 14 以降はアラーム／通話以外は設定での許可が要る。居眠りアラームは該当。 -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>

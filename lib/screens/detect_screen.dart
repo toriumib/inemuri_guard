@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../services/torch.dart';
+import '../services/voice_stop.dart';
 import '../theme/app_theme.dart';
 import '../widgets/camera_stage.dart';
 import '../widgets/range_slider_row.dart';
@@ -352,6 +353,28 @@ class _DetectScreenState extends State<DetectScreen> {
                       detector.carMode = v;
                     },
                   ),
+                  if (VoiceStop.isSupported)
+                    ListenableBuilder(
+                      listenable: VoiceStop.instance,
+                      builder: (context, _) => SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: const Text('声で止める'),
+                        subtitle: Text(
+                          VoiceStop.instance.unavailable
+                              ? 'この端末では音声認識が使えませんでした。音・振動・ボタンで止められます。'
+                              : '鳴っている間「起きた」「止めて」と言うと止まります。'
+                                    '端末の音声認識を使います（寝息検知を使っている間は声では止められません）。'
+                                    '${VoiceStop.instance.lastHeard.isEmpty ? '' : '\n直近に聞こえた言葉: 「${VoiceStop.instance.lastHeard}」'}',
+                        ),
+                        value: stats.voiceStop,
+                        onChanged: (v) async {
+                          await stats.setVoiceStop(v);
+                          alarm.useVoice = v;
+                          if (v) await VoiceStop.instance.prepare();
+                        },
+                      ),
+                    ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
