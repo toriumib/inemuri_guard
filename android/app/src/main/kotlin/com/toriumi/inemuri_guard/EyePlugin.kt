@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.view.KeyEvent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -21,7 +24,8 @@ import io.flutter.plugin.common.MethodChannel
  * - EventChannel  `inemuri/eye_events` … 1フレームごとの目の開き具合
  * - MethodChannel `inemuri/torch` … 外側のライト（フラッシュLED）の点滅
  * - MethodChannel `inemuri/alarm_keys` ＋ EventChannel `inemuri/alarm_key_events` …
- *   アラーム中だけ、音量キー・ホーム／履歴キーを「止めたい」の合図として受ける
+ *   アラーム中だけ、音量キー・ホーム／履歴キー・メディアキー（ハンドルのボタン・
+ *   イヤホンのボタン）を「止めたい」の合図として受ける
  *
  * 判定（しきい値・PERCLOS）は Dart 側に置いたままにしている。
  * 同じ判断を native と Dart の二か所に書くと、必ず片方だけ直して食い違うため。
@@ -219,6 +223,7 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             context.registerReceiver(r, f)
         }
         keysReceiver = r
+        startMediaButtons()
     }
 
     private fun unwatchKeys() {
@@ -226,6 +231,55 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             try { context.unregisterReceiver(it) } catch (_: Exception) {}
         }
         keysReceiver = null
+        stopMediaButtons()
+    }
+
+    /**
+     * 運転中に届く物理ボタンは、ハンドルの再生／一時停止（Bluetooth の AVRCP）と
+     * イヤホンのボタン。どちらも OS は「いま鳴らしている MediaSession」へ届けるので、
+     * 鳴っている間だけ自分のセッションを再生中にして、押されたら「止めたい」にする。
+     */
+    private var media: MediaSession? = null
+    private fun startMediaButtons() {
+        if (media != null) return
+        try {
+            val ms = MediaSession(context, "inemuri-alarm")
+            val fire = { main.post { keysSink?.success("media") } }
+            ms.setCallback(object : MediaSession.Callback() {
+                override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
+                    val ev = mediaButtonIntent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                        ?: return super.onMediaButtonEvent(mediaButtonIntent)
+                    if (ev.action == KeyEvent.ACTION_DOWN) fire()
+                    return true
+                }
+                override fun onPlay() { fire() }
+                override fun onPause() { fire() }
+                override fun onStop() { fire() }
+                override fun onSkipToNext() { fire() }
+                override fun onSkipToPrevious() { fire() }
+            })
+            ms.setPlaybackState(
+                PlaybackState.Builder()
+                    .setActions(
+                        PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
+                            PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP or
+                            PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                    )
+                    .setState(PlaybackState.STATE_PLAYING, 0L, 1f)
+                    .build()
+            )
+            ms.isActive = true
+            media = ms
+        } catch (e: Exception) {
+            Log.w("EyePlugin", "MediaSession を作れなかった", e)
+        }
+    }
+
+    private fun stopMediaButtons() {
+        media?.let {
+            try { it.isActive = false; it.release() } catch (_: Exception) {}
+        }
+        media = null
     }
 
     /** ライトを持っているカメラの id。背面（外側）を優先する。 */

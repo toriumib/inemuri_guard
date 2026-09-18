@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// アラーム中に押された物理キー（音量・ホーム／履歴）を「止めたい」の
-/// 合図として受け取る。別のアプリを前に出していても届く。
+/// アラーム中に押された物理キー（音量・ホーム／履歴・メディアキー＝ハンドルの
+/// 再生ボタンやイヤホンのボタン）を「止めたい」の合図として受け取る。
+/// 別のアプリを前に出していても届く。運転中に触れるのはこれと声だけ。
 ///
 /// 受け方は native（EyePlugin）。音量は VOLUME_CHANGED の放送、ホームと
 /// 履歴は CLOSE_SYSTEM_DIALOGS の reason で見分ける。電源キーは受けない
@@ -19,7 +20,7 @@ class AlarmKeys {
   static bool get isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// 鳴り始めたら呼ぶ。[onPress] には "volume" か "home" が入る。
+  /// 鳴り始めたら呼ぶ。[onPress] には "volume" / "home" / "media" が入る。
   static Future<void> watch(void Function(String why) onPress) async {
     if (!isSupported) return;
     _sub ??= _events.receiveBroadcastStream().listen((e) {
