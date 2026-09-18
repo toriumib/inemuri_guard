@@ -9,70 +9,61 @@ Working, studying, on a night shift, on a long drive — and suddenly your eyes 
 Drowsiness Guard watches your eyelids and head position through your phone's camera and wakes you with sound, vibration, the screen and the light when signs of drowsiness persist.
 
 STARTS THE MOMENT YOU OPEN IT
-Prop up your phone with the camera facing you. Detection starts when the app opens.
-It looks at two things: how long your eyes stay closed, and what share of the last minute they were closed. Blinks don't trigger it. Set the closed-eye time from 3 to 60 seconds (default 5).
+Prop up your phone with the camera facing you. Detection starts when the app opens. It looks at how long your eyes stay closed and what share of the last minute they were closed; blinks don't trigger it. Set the closed-eye time from 3 to 60 seconds (default 5).
 
 WATCHES YOUR HEAD TOO
-If your head slumps forward, tips back or falls sideways from your usual posture and stays there, it wakes you. Your "usual posture" is learned slowly, so it doesn't matter where the camera sits.
-When the eyes can't be read (sunglasses, dark glasses) it shows EYES HIDDEN and watches head posture only.
+If your head slumps forward, tips back or falls sideways from your usual posture and stays there, it wakes you. Your usual posture is learned slowly, so camera placement doesn't matter. When the eyes can't be read (sunglasses) it shows EYES HIDDEN and watches your head only.
 
 KEEPS WATCHING IN OTHER APPS AND WITH THE SCREEN OFF
-Detection continues when you switch apps or turn the screen off. The persistent notification only says "running"; the word "drowsy" never appears on your lock screen.
+Detection continues when you switch apps or turn the screen off. The persistent notification only says "running".
 
 STOP IT WITHOUT TOUCHING THE PHONE
-- Keep your eyes open for 3 seconds and it stops (for a head alarm, sit back up for 3 seconds)
+- Keep your eyes open for 3 seconds (for a head alarm, sit back up for 3 seconds)
 - Say "okita" (I'm awake) or "stop" — uses your phone's speech recognition; can be turned off
 - Press a volume button, the play button on your steering wheel or earphones, or the home button
 - Tap "Stop" on the notification — no need to return to the app
-- When you're looking at the screen, a big "I'm awake!" button appears
+- A big "I'm awake!" button appears when you're looking at the screen
 
 IN A CAR (set "Where you use it" to Car)
-Keep Maps in front while it watches. When drowsiness is detected it tells you to rest at the next service area, parking lot or safe shoulder, and gives a gentle nudge if you keep looking to the side.
-In a car, use it as an aid only and at your own risk. It does not replace the driver's duty of care. Do not handle the phone while driving, mount it securely where it doesn't block your view, and follow traffic law. If you feel sleepy, stop somewhere safe and rest — whatever the app says.
+Keep Maps in front while it watches. When drowsiness is detected it tells you to rest at the next service area, parking lot or safe shoulder, and nudges you if you keep looking to the side.
+In a car, use it as an aid only and at your own risk. It does not replace the driver's duty of care. Do not handle the phone while driving, mount it where it doesn't block your view, and follow traffic law. If you feel sleepy, stop somewhere safe and rest — whatever the app says.
 
 LIGHTS YOUR FACE IN THE DARK
 If it's too dark to find your face, the screen turns white and bright to light it (can be turned off).
 
 WAKES YOU QUIETLY, THEN LOUDER
-Vibration first, then a quiet sound, then a loud one. With earphones in, the sound goes there.
-Audio routing depends on your device; earphones-only playback isn't guaranteed. Follow local camera and device rules at work, in class or on public transport.
+Vibration first, then a quiet sound, then a loud one. With earphones in, the sound goes there (earphones-only playback isn't guaranteed).
 
 WAKES YOU WHEN SOMEONE CALLS
-Optionally wake up on notifications from Slack, Teams, Outlook, Gmail, LINE or Discord, or when the phone rings (needs notification access). It only looks at which app the notification came from; message contents are never sent or stored.
+Optionally wake on notifications from Slack, Teams, Outlook, Gmail, LINE or Discord, or when the phone rings (needs notification access). It only checks which app the notification came from; contents are never sent or stored.
 
-NAP TIMER, POMODORO, HYDRATION
-5/10/20/30-minute nap timer with research references, a Pomodoro timer, and a hydration reminder at the interval you choose.
-
-LOG AND REFLECT
-Detected events are logged on your device so you can see time-of-day patterns. Log your bedtime and wake time too. A sleep-improvement guide includes advice on seeing a doctor for persistent sleepiness; the app does not diagnose or treat any condition.
+NAP TIMER, POMODORO, HYDRATION, LOG
+A 5/10/20/30-minute nap timer, a Pomodoro timer, a hydration reminder, and an on-device log of detected events with a sleep-improvement guide. The app does not diagnose or treat any condition.
 
 NOTHING LEAVES YOUR DEVICE
-Eyelid and head analysis happens on your phone; camera frames are never uploaded or recorded, and the microphone is never recorded. "Stop by voice" uses your phone's speech-recognition feature, so audio while the alarm rings may be processed by the recognition service (can be turned off).
-No account needed. Ads, in-app purchases and speech recognition use the network.
+Eyelid and head analysis happens on your phone; camera frames are never uploaded or recorded, and the microphone is never recorded. "Stop by voice" uses your phone's speech-recognition feature, so audio while the alarm rings may be processed by that service (can be turned off). No account needed. Ads, purchases and speech recognition use the network.
 
 PREMIUM (ONE-TIME PURCHASE)
 No ads, all themes, and a sender filter for "wake me when someone calls". Every wake-up feature stays free.
 
-WEB VERSION
-Also available in your browser: https://inemuri.toriumis.com/en/
-Features and operating conditions differ between Web and Android.
+WEB VERSION: https://inemuri.toriumis.com/en/
 
 BEFORE YOU USE IT
 - On first launch you'll be asked to agree to the Terms of Use: https://inemuri.toriumis.com/en/terms/
-- Dim lighting, glare on glasses or sunglasses, masks and face position can cause missed or false alerts. The absence of an alarm is not evidence that you are safe.
-- This app does not replace a driver's duty of care and is not a driver-assistance system, safety device or medical device. To the extent permitted by law, the operator accepts no liability for accidents or damage arising from reliance on the app.
-- It is not a substitute for sleep. If strong sleepiness persists, see a doctor.
+- Dim lighting, glare on glasses, sunglasses, masks and face position can cause missed or false alerts. The absence of an alarm is not evidence that you are safe.
+- Not a driver-assistance system, safety device or medical device. To the extent permitted by law, the operator accepts no liability for accidents or damage arising from reliance on the app.
+- Not a substitute for sleep. If strong sleepiness persists, see a doctor.
 - Free with ads. See in-app purchase details in the app.
 
 RELEASE NOTES (v1.4.0)
-- On first launch you're asked to agree to the Terms of Use (including the conditions for use in a car)
-- Stop the alarm without touching the phone: keep your eyes open for 3 s, say "okita" or "stop", press a volume / steering-wheel / earphone button, or tap Stop on the notification
-- Head posture (slumping forward, tipping back, falling sideways) now wakes you too; with sunglasses it watches your head only
-- Just pick where you use it: Desk or Car. In a car it tells you where to rest and nudges you when you look away
-- Lights your face with the screen when it's too dark
-- The whole screen becomes a big "I'm awake!" button while ringing; full-screen on the lock screen
-- Purchases merged into one Premium (no ads, all themes, sender filter). Existing buyers are Premium automatically
-- Fixed: switching to another app right after opening could stop detection
+- Terms of Use agreement on first launch (incl. use in a car)
+- Stop hands-free: eyes open 3 s, say "okita"/"stop", a volume/steering-wheel/earphone button, or Stop on the notification
+- Head posture (slumping, tipping, sideways) wakes you; sunglasses → head only
+- Pick Desk or Car; in a car it tells you where to rest
+- Screen lights your face in the dark
+- Big "I'm awake!" button while ringing
+- One Premium purchase; existing buyers keep it
+- Fix: switching apps right after opening
 
 DATA SAFETY (for Play Console)
 - Camera: not collected (processed on device, never sent)
