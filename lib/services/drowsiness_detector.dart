@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart'
         TargetPlatform,
         visibleForTesting,
         WriteBuffer;
-import 'package:flutter/widgets.dart' show Size;
+import 'package:flutter/widgets.dart' show AppLifecycleState, Size, WidgetsBinding;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'native_eye.dart';
 import 'screen_wake.dart';
@@ -250,6 +250,19 @@ class DrowsinessDetector extends ChangeNotifier {
         onPose: ingestPose,
       );
       state = DetectorState.watching;
+      // 起動中（starting）にホームを押されると handleAppPaused は何もせずに
+      // 返るので、前面のカメラを抱えたまま背面に入り、見張りが止まる
+      // （開いてすぐ他のアプリへ、という使い方で実際に起きた）。
+      // 開き終えた時点で既に背面なら、その場で native に引き継ぐ。
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (NativeEye.isRunning &&
+          !_handedOverToNative &&
+          (lifecycle == AppLifecycleState.paused ||
+              lifecycle == AppLifecycleState.hidden ||
+              lifecycle == AppLifecycleState.detached)) {
+        _handedOverToNative = true;
+        await _handOverToNative();
+      }
     } catch (_) {
       state = DetectorState.denied;
       await ScreenWake.release(_wakeKey);

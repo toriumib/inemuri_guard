@@ -31,6 +31,15 @@ class AlarmKeys {
     } catch (_) {}
   }
 
+  /// 音声認識を（再）開始する直前に呼ぶ。開始に伴ってシステムが音量を
+  /// 触ることがあり、それを音量キーと誤認しないように少しの間だけ聞かない。
+  static Future<void> ignoreVolumeBriefly([int ms = 1500]) async {
+    if (!isSupported) return;
+    try {
+      await _method.invokeMethod<void>('ignoreVolume', {'ms': ms});
+    } catch (_) {}
+  }
+
   /// 止まったら呼ぶ。鳴っていない間の音量操作で何も起きないように。
   static Future<void> unwatch() async {
     if (!isSupported) return;

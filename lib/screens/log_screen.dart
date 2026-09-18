@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../models/sleep_symptoms.dart';
 import '../services/sleep_log_service.dart';
+import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/alarm_log_list.dart';
 import '../widgets/sleep_time_card.dart';
 
 class LogScreen extends StatelessWidget {
@@ -12,11 +14,21 @@ class LogScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final log = context.watch<SleepLogService>();
+    final stats = context.watch<StatsService>();
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         const _RecordCard(),
+        const SizedBox(height: 16),
+        // 今日の検知の一覧。検知画面から移した（検知画面は始める・止めるだけに）。
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: AlarmLogList(stats: stats),
+          ),
+        ),
         const SizedBox(height: 16),
         const SleepTimeCard(),
         const SizedBox(height: 16),

@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import 'alarm_keys.dart';
+
 /// 鳴っている間だけ音声認識を回し、「起きた」「止めて」で止める。
 ///
 /// 物理キーと通知のボタンで「戻らずに止める」は足りているが、手が
@@ -92,6 +94,8 @@ class VoiceStop extends ChangeNotifier {
 
   Future<void> _listen() async {
     if (!_active) return;
+    // 認識の開始でシステムが音量を触ることがある。音量キーと取り違えない。
+    await AlarmKeys.ignoreVolumeBriefly(2000);
     try {
       await _stt.listen(
         onResult: _onResult,
@@ -112,6 +116,7 @@ class VoiceStop extends ChangeNotifier {
 
   void _onResult(SpeechRecognitionResult r) {
     lastHeard = r.recognizedWords;
+    debugPrint('VoiceStop heard: "${r.recognizedWords}"');
     notifyListeners();
     if (matches(r.recognizedWords)) {
       final cb = onStop;

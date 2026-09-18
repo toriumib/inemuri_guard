@@ -129,6 +129,13 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             when (call.method) {
                 "watch" -> { watchKeys(); result.success(true) }
                 "unwatch" -> { unwatchKeys(); result.success(true) }
+                // 音声認識の開始直後は、システムが音量を触る（ミュート等）ことがあり、
+                // それを音量キーと誤認して止めてしまった（実機 20:06:57）。少しの間だけ聞かない。
+                "ignoreVolume" -> {
+                    val ms = (call.argument<Number>("ms") ?: 1500).toLong()
+                    ignoreVolumeUntil = System.currentTimeMillis() + ms
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -191,14 +198,31 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
 
     private var keysSink: EventChannel.EventSink? = null
     private var keysReceiver: BroadcastReceiver? = null
+    @Volatile private var ignoreVolumeUntil = 0L
 
     /** アラームが鳴っている間だけ、音量の変化とホーム／履歴キーを聞く。 */
     private fun watchKeys() {
         if (keysReceiver != null) return
         val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
+                // 何が来たかをログに残す（実機で「勝手に止まる」の原因を追うため）。
+                Log.d("EyePlugin", "alarm key broadcast: ${i.action} " +
+                    "stream=${i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)} " +
+                    "prev=${i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)} " +
+                    "now=${i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)} " +
+                    "reason=${i.getStringExtra("reason")}")
                 val why = when (i.action) {
-                    VOLUME_CHANGED -> "volume"
+                    VOLUME_CHANGED -> {
+                        // 本人がキーを押した変化だけ。値が変わっていない放送、
+                        // 通知・システム音など本人が触らないストリーム、
+                        // 音声認識の開始直後の変化は捨てる。
+                        val stream = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
+                        val prev = i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
+                        val now = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
+                        val userStream = stream == 2 || stream == 3 || stream == 4  // RING, MUSIC, ALARM
+                        if (prev == now || !userStream || System.currentTimeMillis() < ignoreVolumeUntil) return
+                        "volume"
+                    }
                     Intent.ACTION_CLOSE_SYSTEM_DIALOGS -> {
                         // 通知シェードの開閉や画面消灯でも飛ぶ放送なので、
                         // ホームと履歴のキーだけを本人の操作として受ける。
@@ -244,7 +268,7 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
         if (media != null) return
         try {
             val ms = MediaSession(context, "inemuri-alarm")
-            val fire = { main.post { keysSink?.success("media") } }
+            val fire = { Log.d("EyePlugin", "media button"); main.post { keysSink?.success("media") } }
             ms.setCallback(object : MediaSession.Callback() {
                 override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
                     val ev = mediaButtonIntent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)

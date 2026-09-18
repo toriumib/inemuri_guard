@@ -3,14 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../screens/terms_gate.dart';
+import '../services/alarm_service.dart';
+import '../services/drowsiness_detector.dart';
 import '../services/notification_service.dart';
 import '../services/nudge_service.dart';
 import '../services/purchase_service.dart';
 import '../services/stats_service.dart';
 import '../services/support_service.dart';
+import '../services/torch.dart';
+import '../services/voice_stop.dart';
 import '../theme/app_skin.dart';
 import '../theme/app_theme.dart';
+import '../widgets/breathing_card.dart';
 import '../widgets/hydration_card.dart';
+import '../widgets/tone_row.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -23,20 +29,139 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        _DetectionSettingsCard(stats: stats),
+        const SizedBox(height: 16),
         _PremiumCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
         _SkinCard(stats: stats, purchases: purchases),
-        const SizedBox(height: 16),
-        _WatchBridgeCard(stats: stats),
         const SizedBox(height: 16),
         const _NudgeCard(),
         const SizedBox(height: 16),
         const HydrationCard(),
         const SizedBox(height: 16),
+        _BetaCard(stats: stats),
+        const SizedBox(height: 16),
         const _SupportCard(),
         const SizedBox(height: 16),
         const _AboutCard(),
       ],
+    );
+  }
+}
+
+/// 検知まわりの、たまに触る設定。検知画面は「始める・止める・使う場所・秒数」
+/// だけにして、残りはここに寄せる（だれでも使えるように、と本人の要望）。
+class _DetectionSettingsCard extends StatelessWidget {
+  final StatsService stats;
+  const _DetectionSettingsCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final alarm = context.read<AlarmService>();
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('検知の設定', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('開いた瞬間から見張る'),
+              subtitle: const Text('アプリを開くだけでカメラが始まります。'),
+              value: stats.autoStartDetection,
+              onChanged: (v) => stats.setAutoStartDetection(v),
+            ),
+            if (VoiceStop.isSupported)
+              ListenableBuilder(
+                listenable: VoiceStop.instance,
+                builder: (context, _) => SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: const Text('声で止める'),
+                  subtitle: Text(
+                    VoiceStop.instance.unavailable
+                        ? 'この端末では音声認識が使えませんでした。音・振動・ボタンで止められます。'
+                        : '鳴っている間「起きた」「止めて」と言うと止まります。'
+                              '端末の音声認識を使います（寝息検知を使っている間は声では止められません）。'
+                              '${VoiceStop.instance.lastHeard.isEmpty ? '' : '\n直近に聞こえた言葉: 「${VoiceStop.instance.lastHeard}」'}',
+                  ),
+                  value: stats.voiceStop,
+                  onChanged: (v) async {
+                    await stats.setVoiceStop(v);
+                    alarm.useVoice = v;
+                    if (v) await VoiceStop.instance.prepare();
+                  },
+                ),
+              ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('暗いところでは画面で照らす'),
+              subtitle: const Text(
+                '暗くて顔が見つからないとき、画面を白く明るくして顔を照らします。'
+                '顔が見つかると元に戻ります。',
+              ),
+              value: stats.illuminateInDark,
+              onChanged: (v) => stats.setIlluminateInDark(v),
+            ),
+            const Divider(height: 24),
+            ToneRow(alarm: alarm),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 開発中の機能。使い道が限られる・まだ実機での検証が薄いものを、
+/// 一般の画面から外してここに集める。開くまで見えない。
+class _BetaCard extends StatelessWidget {
+  final StatsService stats;
+  const _BetaCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final detector = context.watch<DrowsinessDetector>();
+    final alarm = context.read<AlarmService>();
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+        title: Text('開発中の機能（β）', style: Theme.of(context).textTheme.titleMedium),
+        subtitle: Text(
+          '試している機能。動かない端末・場面があります。',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+        ),
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('裏向きに置いて背面カメラで見張る'),
+            subtitle: Text(
+              '画面を外へ向けて置き、背面カメラで自分を見ます。'
+              '${Torch.isSupported ? 'アラーム中は背面のライトも点滅します。' : ''}'
+              '机では切ったままで。',
+            ),
+            value: stats.useBackCamera,
+            onChanged: (v) async {
+              await stats.setUseBackCamera(v);
+              alarm.useTorch = v && Torch.isSupported;
+              // 見張っている最中なら、カメラをその場で開き直す。
+              await detector.setUseBackCamera(v);
+            },
+          ),
+          const SizedBox(height: 10),
+          const BreathingCard(),
+          const SizedBox(height: 12),
+          _WatchBridgeCard(stats: stats),
+        ],
+      ),
     );
   }
 }

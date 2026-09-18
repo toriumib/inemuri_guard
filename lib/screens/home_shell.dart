@@ -123,6 +123,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// 画面の「起きた！」／スヌーズ。目のアラームは 3 分のスヌーズ、
   /// 仮眠は 3 分後にもう一度。
   void _wakeUp() {
+    debugPrint('alarm dismissed: wake button');
     final alarm = context.read<AlarmService>();
     final detector = context.read<DrowsinessDetector>();
     final breathing = context.read<BreathingDetector>();
@@ -145,6 +146,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// だが、別のアプリを操作しているなら開いている——3分のスヌーズにする。
   void _dismissFromOutside(String why) {
     if (!mounted) return;
+    debugPrint('alarm dismissed from outside: $why');
     final alarm = context.read<AlarmService>();
     final detector = context.read<DrowsinessDetector>();
     final breathing = context.read<BreathingDetector>();
