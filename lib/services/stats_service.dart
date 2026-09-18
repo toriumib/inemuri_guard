@@ -16,6 +16,10 @@ class LogEntry {
 
 /// Tracks today's nap/alarm counts and a short rolling event log.
 /// Counts reset automatically when the calendar day changes.
+/// どこで使うか。設定はこの 1 択だけ——背面カメラと車モードはここから決まる。
+/// 机: 前面カメラ。車・画面を自分に: 前面カメラ＋車の機能。車・裏向き: 背面カメラ＋車の機能＋ライト。
+enum Placement { desk, carFront, carBack }
+
 class StatsService extends ChangeNotifier {
   static const _kDate = 'stats_date';
   static const _kNaps = 'stats_naps';
@@ -61,9 +65,25 @@ class StatsService extends ChangeNotifier {
   bool watchBridge = true;
 
   /// 車で使うか。ON にすると、眠気を検知したとき「安全な場所で休憩」の
-  /// 案内（画面のカードと通知）を出し、アラーム中は外側のライトも点滅させ、
-  /// マップを開いたまま見張るためのボタンを出す。既定は OFF（机で使う人が多い）。
+  /// 案内（画面のカードと通知）を出し、脇見を知らせ、マップを開いたまま
+  /// 見張るためのボタンを出す。既定は OFF（机で使う人が多い）。
+  /// 直接は触らず [setPlacement] で決める（背面カメラと一緒に決まる）。
   bool carMode = false;
+
+  Placement get placement => !carMode
+      ? Placement.desk
+      : (useBackCamera ? Placement.carBack : Placement.carFront);
+
+  /// 使う場所を 1 回選ぶだけで、カメラの向きと車の機能が決まる。
+  /// ライトの点滅は背面カメラ（裏向き）のときだけ有効（呼び出し側が見る）。
+  Future<void> setPlacement(Placement p) async {
+    carMode = p != Placement.desk;
+    useBackCamera = p == Placement.carBack;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCarMode, carMode);
+    await prefs.setBool(_kUseBackCamera, useBackCamera);
+    notifyListeners();
+  }
 
   /// 同意した利用規約の版。0 は未同意。TermsGate.version より小さければ
   /// 起動時にもう一度同意画面を出す。

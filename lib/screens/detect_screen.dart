@@ -42,14 +42,22 @@ class _DetectScreenState extends State<DetectScreen> {
     _breathing = context.read<BreathingDetector>();
     _detector.addListener(_sensorChanged);
     _breathing.addListener(_sensorChanged);
-    // 外側のライトの点滅は車で使うときだけ。保存値を鳴らし側へ渡す。
-    context.read<AlarmService>().useTorch =
-        context.read<StatsService>().carMode && Torch.isSupported;
+    // 保存した「使う場所」を、カメラの向き・車の機能・ライトへ配る。
+    // 起動時にここを通らないと、背面カメラの設定が次の起動で効かない
+    // （1.3.0 までそうなっていた）。
+    _applyPlacement(context.read<StatsService>().placement);
     // 前面ではカメラを持っている側（Flutter）しかライトを点せない。
     Torch.viaController = _detector.setTorch;
-    // 脇見の判定は車のときだけ。保存値を検知器へ渡す。
-    _detector.carMode = context.read<StatsService>().carMode;
     _sensorChanged();
+  }
+
+  /// 「使う場所」から、検知器と鳴らし側の設定を決める。
+  /// ライトは裏向き（背面カメラ）のときだけ——前面のときは光が窓の外へ向く。
+  void _applyPlacement(Placement p) {
+    _detector.useBackCamera = p == Placement.carBack;
+    _detector.carMode = p != Placement.desk;
+    context.read<AlarmService>().useTorch =
+        p == Placement.carBack && Torch.isSupported;
   }
 
   /// 地図アプリを開く。[query] があれば近くをその語で探す（例: 駐車場）。
@@ -320,39 +328,63 @@ class _DetectScreenState extends State<DetectScreen> {
                     },
                   ),
                   const SizedBox(height: 14),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    title: const Text('背面カメラで見張る'),
-                    // 実機（360dp・文字大きめ）では長い文が細い柱になる。
-                    // 免責の全文は設定の「このアプリについて」にあるので、ここは要点だけ。
-                    subtitle: const Text(
-                      'スタンドに載せて画面を外へ向けるときに。机なら切ったままで。'
-                      '車内では補助としてのみ——見逃し・誤作動があり、注意義務の代わりには'
-                      'なりません（免責は設定の「このアプリについて」）。',
-                    ),
-                    value: stats.useBackCamera,
-                    onChanged: (v) async {
-                      await stats.setUseBackCamera(v);
-                      await detector.setUseBackCamera(v);
-                    },
+                  Text('使う場所', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    '1 回選ぶだけ。カメラの向きと車向けの機能がここで決まります。',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    title: const Text('車で使う'),
-                    subtitle: Text(
-                      '眠気を検知したら、休憩できる場所（SA・PA・駐車場・路肩）の案内を出します。'
-                      '${Torch.isSupported ? 'アラーム中は外側のライトも点滅（裏向きに置いたとき用）。' : ''}'
-                      'マップを開いたまま見張れます。',
-                    ),
-                    value: stats.carMode,
+                  RadioGroup<Placement>(
+                    groupValue: stats.placement,
                     onChanged: (v) async {
-                      await stats.setCarMode(v);
-                      alarm.useTorch = v && Torch.isSupported;
-                      detector.carMode = v;
+                      if (v == null) return;
+                      await stats.setPlacement(v);
+                      _applyPlacement(v);
+                      // 見張っている最中なら、カメラをその場で開き直す。
+                      await detector.setUseBackCamera(v == Placement.carBack);
                     },
+                    child: Column(
+                      children: [
+                        for (final (p, title, body) in const [
+                          (
+                            Placement.desk,
+                            '机の上',
+                            '前面カメラで自分を見ます。いちばん多い使い方。',
+                          ),
+                          (
+                            Placement.carFront,
+                            '車・画面を自分に向ける',
+                            'マップを見ながら見張れます。眠気を検知したら休憩できる場所'
+                                '（SA・PA・駐車場・路肩）を案内し、よそ見も知らせます。',
+                          ),
+                          (
+                            Placement.carBack,
+                            '車・裏向きに置く',
+                            '背面カメラで見張り、アラーム中は背面のライトも点滅します。'
+                                '案内・よそ見は同じ。',
+                          ),
+                        ])
+                          RadioListTile<Placement>(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            value: p,
+                            title: Text(title),
+                            subtitle: Text(body),
+                          ),
+                      ],
+                    ),
                   ),
+                  if (stats.carMode)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 6),
+                      child: Text(
+                        '車内では補助としてのみ、自己責任で。見逃し・誤作動があり、注意義務の代わりには'
+                        'なりません（利用規約 第4条）。',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                      ),
+                    ),
                   if (VoiceStop.isSupported)
                     ListenableBuilder(
                       listenable: VoiceStop.instance,
