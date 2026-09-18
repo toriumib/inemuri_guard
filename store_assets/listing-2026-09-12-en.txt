@@ -47,7 +47,18 @@ Alerts are not a substitute for sleep. Seek medical advice if strong sleepiness 
 
 Free with ads. See the app for available in-app purchases.
 
-RELEASE NOTES (v1.3.0) -- use this block for the Play "release notes" field
+RELEASE NOTES (v1.4.0) -- use this block for the Play "release notes" field
+- On first launch you are asked to agree to the Terms of Use (including the conditions for use in a car)
+- It now watches your head too: if you slump forward, tip back or sideways from your usual posture and stay there, it wakes you
+- When the eyes can't be read (sunglasses), it shows EYES HIDDEN and watches head posture only
+- In car mode, looking to the side for a while gives a gentle nudge
+- If it's too dark to find your face, the screen turns white and bright to light it (can be turned off)
+- While the alarm rings, the whole screen becomes a big "I'm awake!" button; on the lock screen it appears full-screen
+- Say "okita" (I'm awake) or "stop" to silence the alarm (on-device speech recognition, can be turned off)
+- Car mode: when drowsiness is detected, it tells you to rest at a service area, parking lot or safe shoulder, with a map link to nearby parking; the rear flash strobes during the alarm
+- Stop without returning to the app: the notification's Stop button, a volume button, or the home button
+
+RELEASE NOTES (v1.3.0 -- never published, folded into 1.4.0)
 - New "Using it in a car": when drowsiness is detected, it tells you to rest at the next service area, parking lot or safe shoulder, with a map link to nearby parking
 - In car mode the rear flash LED strobes during the alarm (for phones mounted screen-away, watching with the rear camera)
 - Keep Maps or any other app in front while it watches ("Open Maps" button)
