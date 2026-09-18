@@ -2,7 +2,7 @@ TITLE (30 chars max)
 Drowsiness Guard: Camera Alarm
 
 SHORT DESCRIPTION (80 chars max)
-Watches your eyelids and head with the camera and wakes you. Desk or car. Stop it by voice, eyes or a button.
+Camera drowsiness alarm for desk or car. Stop it by voice, open eyes or a button.
 
 FULL DESCRIPTION
 Working, studying, on a night shift, on a long drive — and suddenly your eyes were closed.
