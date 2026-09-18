@@ -1,0 +1,20 @@
+<ja-JP>
+・初回に利用規約への同意をお願いするようになりました（車内での利用条件を含みます）
+・鳴ったら触らずに止められます：目を開けたまま 3 秒、「起きた」「止めて」の声、音量・ハンドル・イヤホンのボタン、通知の「止める」
+・頭の傾き（俯き・仰け反り・横倒し）でも起こします。サングラスで目が読めないときは頭だけで見張ります
+・使う場所を「机の上／車」から選ぶだけに。車では休憩できる場所の案内と、よそ見の知らせ
+・暗くて顔が見つからないときは画面で顔を照らします
+・鳴っている間は画面全体が大きな「起きた！」ボタン。ロック中は全画面で出ます
+・課金を「プレミアム」1 つに（広告なし・テーマ全部・差出人フィルタ）。既にお持ちの方はそのままプレミアム
+・開いた直後に他のアプリへ切り替えると見張りが止まっていた不具合を修正
+</ja-JP>
+<en-US>
+- Terms of Use agreement on first launch (incl. use in a car)
+- Stop hands-free: eyes open 3 s, say "okita"/"stop", a volume/steering-wheel/earphone button, or Stop on the notification
+- Head posture (slumping, tipping, sideways) wakes you; sunglasses → head only
+- Pick Desk or Car; in a car it tells you where to rest
+- Screen lights your face in the dark
+- Big "I'm awake!" button while ringing
+- One Premium purchase; existing buyers keep it
+- Fix: switching apps right after opening
+</en-US>
