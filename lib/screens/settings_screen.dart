@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../screens/terms_gate.dart';
 import '../services/alarm_service.dart';
+import '../services/car_trigger.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/notification_service.dart';
 import '../services/nudge_service.dart';
@@ -31,6 +32,10 @@ class SettingsScreen extends StatelessWidget {
       children: [
         _DetectionSettingsCard(stats: stats),
         const SizedBox(height: 16),
+        if (CarTrigger.isSupported) ...[
+          const _CarStartCard(),
+          const SizedBox(height: 16),
+        ],
         _PremiumCard(stats: stats, purchases: purchases),
         const SizedBox(height: 16),
         _SkinCard(stats: stats, purchases: purchases),
@@ -110,6 +115,117 @@ class _DetectionSettingsCard extends StatelessWidget {
             ),
             const Divider(height: 24),
             ToneRow(alarm: alarm),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 車に乗ったら始める。起動の手間を無くすための入口を 1 か所に集める。
+class _CarStartCard extends StatelessWidget {
+  const _CarStartCard();
+
+  Future<void> _pickCar(BuildContext context) async {
+    final car = context.read<CarTrigger>();
+    final devices = await car.bondedDevices();
+    if (!context.mounted) return;
+    if (devices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ペアリング済みの Bluetooth 機器が見つかりません。'
+              '先に端末の設定で車とペアリングし、Bluetooth の許可を与えてください。'),
+        ),
+      );
+      return;
+    }
+    final picked = await showModalBottomSheet<({String name, String address})?>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 6),
+              child: Text('車のオーディオはどれ？', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            for (final d in devices)
+              ListTile(
+                leading: const Icon(Icons.bluetooth),
+                title: Text(d.name),
+                subtitle: Text(d.address),
+                onTap: () => Navigator.pop(c, d),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) await car.setCar(picked.address, picked.name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final car = context.watch<CarTrigger>();
+    final c = AppColors.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('車に乗ったら始める', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              'アプリを開く手間を無くします。乗ったことを検知すると、画面がロック中なら'
+              'そのまま開いて見張りが始まり、解除中なら通知が出て 1 タップで始まります。'
+              '降りたら止まります。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 10),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.bluetooth_audio, color: c.accentGood),
+              title: const Text('車の Bluetooth につながったら'),
+              subtitle: Text(
+                car.btName == null
+                    ? '車のオーディオを選んでください（位置情報は使いません）'
+                    : '${car.btName} につながったら始めます',
+              ),
+              trailing: car.btName == null
+                  ? const Icon(Icons.chevron_right)
+                  : IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: '解除',
+                      onPressed: () => car.setCar(null, null),
+                    ),
+              onTap: () => _pickCar(context),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('運転を体で検知して始める（試験的）'),
+              subtitle: const Text(
+                '端末の身体活動認識で「乗り物に乗った」を受けます。バス・電車と区別できないので、'
+                '通勤電車でも通知が出ます。位置情報は使いません。',
+              ),
+              value: car.startOnDrive,
+              onChanged: (v) async {
+                final ok = await car.setStartOnDrive(v);
+                if (v && !ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('身体活動認識の許可が必要です。')),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'ほかの入口：クイック設定に「居眠りガード」タイルを追加すると、どの画面からでも 1 回で始まります。'
+              'ホルダーに NFC タグ（URI: inemuri://start）を貼れば、置くだけで開きます。'
+              '自動化アプリからは com.stop.sleeping.START で起動できます。',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+            ),
           ],
         ),
       ),

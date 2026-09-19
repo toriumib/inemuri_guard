@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/ad_service.dart';
 import '../services/alarm_service.dart';
 import '../services/breathing_detector.dart';
+import '../services/car_trigger.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/hydration_service.dart';
 import '../services/nap_timer_service.dart';
@@ -92,6 +93,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         context.read<BreathingDetector>().state == MicState.listening;
     context.read<NotificationService>().onStopRequested = () =>
         _dismissFromOutside('notification');
+    // 車に乗った・降りた（アプリが生きているとき）。乗ったら見張りを始め、
+    // 降りたら止める。アプリが死んでいるときは native が通知で開かせる。
+    final car = context.read<CarTrigger>();
+    car.onBoarded = (why) {
+      if (!mounted) return;
+      final detector = context.read<DrowsinessDetector>();
+      if (detector.state == DetectorState.idle) {
+        detector.setThresholdSeconds(context.read<StatsService>().eyeThresholdSeconds);
+        detector.start();
+      }
+    };
+    car.onLeft = (why) {
+      if (!mounted) return;
+      final detector = context.read<DrowsinessDetector>();
+      if (detector.state != DetectorState.idle) {
+        detector.stop();
+        context.read<AlarmService>().stop();
+      }
+    };
     final stats = context.read<StatsService>();
     if (!stats.isPremium) {
       _banner = context.read<AdService>().createBanner(

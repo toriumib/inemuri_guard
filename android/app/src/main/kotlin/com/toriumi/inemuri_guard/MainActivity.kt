@@ -14,6 +14,9 @@ class MainActivity : FlutterActivity() {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
         }
+        // 「車に乗りましたか？」の通知チャンネル。受信機がプロセスの無い状態で
+        // 出すことがあるので、アプリを開いたときに先に作っておく。
+        CarTriggerReceiver.ensureChannel(this)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

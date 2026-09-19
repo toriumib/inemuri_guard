@@ -1,9 +1,18 @@
 package com.toriumi.inemuri_guard
 
+import android.Manifest
+import android.app.PendingIntent
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.ActivityRecognition
+import com.google.android.gms.location.ActivityTransition
+import com.google.android.gms.location.ActivityTransitionRequest
+import com.google.android.gms.location.DetectedActivity
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.session.MediaSession
@@ -120,6 +129,28 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             }
         }
 
+        // ── 車に乗ったら始める ──
+        // Bluetooth の機器一覧（車を選ぶ）、運転検知の登録、乗車・降車の知らせ。
+        MethodChannel(messenger, "inemuri/car").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "bondedDevices" -> result.success(bondedDevices())
+                "startDrive" -> result.success(requestDriveUpdates())
+                "stopDrive" -> { removeDriveUpdates(); result.success(true) }
+                else -> result.notImplemented()
+            }
+        }
+        EventChannel(messenger, "inemuri/car_events").setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(args: Any?, sink: EventChannel.EventSink?) {
+                    CarTriggerReceiver.sink = { ev -> main.post { sink?.success(ev) } }
+                }
+
+                override fun onCancel(args: Any?) {
+                    CarTriggerReceiver.sink = null
+                }
+            }
+        )
+
         // ── 外からアラームを止める（音量キー・ホーム／履歴キー） ──
         // 別のアプリを前に出しているとき、アプリに戻らずに止めたい、への答え。
         // 押せる＝起きているので、どのキーでも止めてよい。電源キーは画面が
@@ -194,6 +225,64 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
                 EyeService.errorSink = null
             }
         })
+    }
+
+    /** ペアリング済みの Bluetooth 機器。車を選ばせるための一覧。 */
+    private fun bondedDevices(): List<Map<String, String>> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return emptyList()
+        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+            ?: return emptyList()
+        return try {
+            adapter.bondedDevices.map { d ->
+                mapOf("name" to (d.name ?: d.address), "address" to d.address)
+            }.sortedBy { it["name"] }
+        } catch (e: SecurityException) {
+            emptyList()
+        }
+    }
+
+    /** 乗り物への乗り降りの通知を OS に頼む。低消費電力の API。権限は Dart 側で取ってから来る。 */
+    private var drivePi: PendingIntent? = null
+    private fun requestDriveUpdates(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return false
+        val request = ActivityTransitionRequest(
+            listOf(
+                ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.IN_VEHICLE)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build(),
+                ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.IN_VEHICLE)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                    .build()
+            )
+        )
+        val pi = PendingIntent.getBroadcast(
+            context, 3,
+            Intent(context, CarTriggerReceiver::class.java).setAction("com.stop.sleeping.DRIVE"),
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+        )
+        drivePi = pi
+        ActivityRecognition.getClient(context)
+            .requestActivityTransitionUpdates(request, pi)
+            .addOnFailureListener { Log.w("EyePlugin", "運転検知の登録に失敗: $it") }
+        return true
+    }
+
+    private fun removeDriveUpdates() {
+        drivePi?.let {
+            ActivityRecognition.getClient(context)
+                .removeActivityTransitionUpdates(it)
+                .addOnFailureListener { Log.w("EyePlugin", "運転検知の解除に失敗: $it") }
+        }
+        drivePi = null
     }
 
     private var keysSink: EventChannel.EventSink? = null

@@ -19,6 +19,13 @@
     <!-- 画面ロック中に鳴ったら、通知ではなくこのアプリの画面（大きな「起きた！」）を出す。
          Android 14 以降はアラーム／通話以外は設定での許可が要る。居眠りアラームは該当。 -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <!-- 車に乗ったら始める：車の Bluetooth の接続を見る。12 以降は実行時許可、
+         それより前は BLUETOOTH だけでよい。位置情報は使わない。 -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- 運転を体で検知して始める（設定で ON にしたときだけ登録）。10 以降は実行時許可。 -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
@@ -48,6 +55,24 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- NFC タグ（URI: inemuri://start）を読んだとき、タグをホルダーに貼って
+                 置くだけで開く。Tasker などの自動化アプリからも同じ URI で開ける。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="inemuri" android:host="start"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="inemuri" android:host="start"/>
+            </intent-filter>
+            <!-- 自動化アプリ向けの起動 Intent（com.stop.sleeping.START）。 -->
+            <intent-filter>
+                <action android:name="com.stop.sleeping.START"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
         </activity>
         <!-- 見張りを続けるための常駐サービス。
              型に camera と microphone を両方書いているのは、瞼検知(カメラ)と
@@ -62,6 +87,30 @@
             android:foregroundServiceType="camera|microphone"
             android:exported="false"
             android:stopWithTask="true"/>
+
+        <!-- 車に乗った／降りた。Bluetooth の接続・切断はアプリが死んでいても届く。 -->
+        <receiver
+            android:name=".CarTriggerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED"/>
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED"/>
+                <action android:name="com.stop.sleeping.TEST_BOARD"/>
+                <action android:name="com.stop.sleeping.TEST_LEFT"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- クイック設定の「居眠りガード」タイル。1 回押すと開いて見張りが始まる。 -->
+        <service
+            android:name=".WatchTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="居眠りガード"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
+            </intent-filter>
+        </service>
 
         <!-- Slack/Teams/メールの通知で起こすための受け口。
              通知アクセスはユーザーが設定画面で明示的に許可しないと有効に
