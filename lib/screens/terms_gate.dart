@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
+import '../l10n/app_language.dart';
 
 /// 初回だけの同意画面。運転用途を「外す」代わりに、最初に規約を読んで
 /// 同意してもらう（2026-09-18 の決定）。同意するまで HomeShell を出さないので、
@@ -18,23 +19,6 @@ class TermsGate extends StatelessWidget {
   final VoidCallback onAccept;
   const TermsGate({super.key, required this.onAccept});
 
-  static const _points = <(String, String)>[
-    ('補助の道具です', '睡眠の代わり・医療機器・安全装置ではありません。'),
-    (
-      '見逃し・誤作動があります',
-      '暗い所、眼鏡・サングラス・マスク、顔がカメラから外れたとき。'
-          '鳴らなかったことを安全の根拠にしないでください。',
-    ),
-    (
-      '車内では補助としてのみ、自己責任で',
-      '運転者の注意義務の代わりにはなりません。運転中は端末を操作せず、法令に従い、'
-          '眠気を感じたら SA・PA・駐車場など安全な場所に停めて休んでください。'
-          '依拠による事故・損害の責任は負いません。',
-    ),
-    ('プライバシー', '映像も音も端末の外に出さず、保存もしません。'),
-    ('現状有姿での提供', '正確さや継続を保証しません。有料機能の購入・返金は Google Play の規定に従います。'),
-  ];
-
   static Future<void> _open(String url) async {
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -45,6 +29,14 @@ class TermsGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = context.l10n;
+    final points = [
+      (l.termsAidTitle, l.termsAidBody),
+      (l.termsMissTitle, l.termsMissBody),
+      (l.termsDrivingTitle, l.termsDrivingBody),
+      (l.privacyTitle, l.termsPrivacyBody),
+      (l.termsAsIsTitle, l.termsAsIsBody),
+    ];
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -53,14 +45,11 @@ class TermsGate extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(22, 28, 22, 12),
                 children: [
-                  Text('はじめに、利用規約への同意', style: text.headlineSmall),
+                  Text(l.termsTitle, style: text.headlineSmall),
                   const SizedBox(height: 6),
-                  Text(
-                    '下の要点を読んで「同意して始める」を押すと使えます。',
-                    style: text.bodyMedium,
-                  ),
+                  Text(l.termsIntro, style: text.bodyMedium),
                   const SizedBox(height: 18),
-                  for (final (title, body) in _points) ...[
+                  for (final (title, body) in points) ...[
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -83,12 +72,16 @@ class TermsGate extends StatelessWidget {
                     spacing: 4,
                     children: [
                       TextButton(
-                        onPressed: () => _open(url),
-                        child: const Text('利用規約の全文'),
+                        onPressed: () => _open(
+                          l.localeName == 'ja'
+                              ? url
+                              : 'https://inemuri.toriumis.com/en/terms/',
+                        ),
+                        child: Text(l.termsFull),
                       ),
                       TextButton(
                         onPressed: () => _open(privacyUrl),
-                        child: const Text('プライバシーポリシー'),
+                        child: Text(l.privacyLink),
                       ),
                     ],
                   ),
@@ -114,11 +107,11 @@ class TermsGate extends StatelessWidget {
                       ),
                     ),
                     onPressed: onAccept,
-                    child: const Text('同意して始める'),
+                    child: Text(l.agreeStart),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '同意しない場合は、このアプリを使えません。',
+                    l.termsRequired,
                     textAlign: TextAlign.center,
                     style: text.bodyMedium?.copyWith(fontSize: 12),
                   ),

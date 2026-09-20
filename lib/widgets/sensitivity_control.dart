@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/stats_service.dart';
@@ -15,7 +16,10 @@ class SensitivityControl extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('検知の感度', style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          context.l10n.sensitivityTitle,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -23,9 +27,11 @@ class SensitivityControl extends StatelessWidget {
             for (final option in DetectionSensitivity.values)
               ChoiceChip(
                 label: Text(switch (option) {
-                  DetectionSensitivity.standard => '標準',
-                  DetectionSensitivity.sensitive => '敏感',
-                  DetectionSensitivity.custom => '詳細設定',
+                  DetectionSensitivity.standard =>
+                    context.l10n.sensitivityStandard,
+                  DetectionSensitivity.sensitive =>
+                    context.l10n.sensitivitySensitive,
+                  DetectionSensitivity.custom => context.l10n.sensitivityCustom,
                 }),
                 selected: stats.sensitivity == option,
                 onSelected: enabled
@@ -44,13 +50,10 @@ class SensitivityControl extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          '閉眼・姿勢の傾きが連続${stats.eyeThresholdSeconds}秒で警告。'
-          '敏感にすると短い動作でも鳴りやすくなります。PERCLOSと呼吸音の設定は変わりません。',
-        ),
+        Text(context.l10n.sensitivityExplanation(stats.eyeThresholdSeconds)),
         if (stats.sensitivity == DetectionSensitivity.custom)
           RangeSliderRow(
-            title: '連続何秒で知らせる？',
+            title: context.l10n.thresholdTitle,
             value: stats.eyeThresholdSeconds,
             color: AppColors.of(context).accentAlert,
             onChanged: (value) {

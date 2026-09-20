@@ -17,7 +17,7 @@ class WatchTileService : TileService() {
         super.onStartListening()
         qsTile?.apply {
             state = if (EyeService.isRunning || EyeService.instance != null) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-            label = "居眠りガード"
+            label = getString(R.string.app_name)
             updateTile()
         }
     }

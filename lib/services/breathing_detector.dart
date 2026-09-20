@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -50,7 +51,7 @@ class BreathingDetector extends ChangeNotifier {
 
   void noteInputFailure() {
     if (state == MicState.idle || state == MicState.failed) return;
-    failure = 'マイク入力が停止しました。権限を確認して再開してください。';
+    failure = AppLanguage.current.micInputFailed;
     state = MicState.failed;
     _healthTimer?.cancel();
     _sub?.cancel();

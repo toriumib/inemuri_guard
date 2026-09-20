@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'drowsiness_detector.dart';
@@ -44,7 +45,7 @@ class AlertCoordinator extends ChangeNotifier {
   String? _applied;
 
   void requestNudge(String app) {
-    _nudge = '$app の通知が届きました';
+    _nudge = AppLanguage.current.nudgeReason(app);
     _schedule();
   }
 
@@ -106,10 +107,10 @@ class AlertCoordinator extends ChangeNotifier {
     _lookAway = detector.lookAwayAlert;
     final source = next.isEmpty ? null : next.first;
     final reason = switch (source) {
-      AlertSource.eyes => '目を閉じたままの状態を検知しました',
-      AlertSource.posture => '頭の傾きが続いています。姿勢を戻してください',
-      AlertSource.breathing => '規則的な寝息のような音を検知しました',
-      AlertSource.nap => '仮眠の終了時刻です',
+      AlertSource.eyes => AppLanguage.current.eyesClosedReason,
+      AlertSource.posture => AppLanguage.current.headTiltReason,
+      AlertSource.breathing => AppLanguage.current.breathingReason,
+      AlertSource.nap => AppLanguage.current.napReason,
       AlertSource.nudge => _nudge,
       null => null,
     };
@@ -133,7 +134,7 @@ class AlertCoordinator extends ChangeNotifier {
             notifyListeners();
           }
         } catch (_) {
-          outputFailure = 'アラーム出力に失敗しました。音の設定を確認してください。';
+          outputFailure = AppLanguage.current.alarmOutputFailed;
           notifyListeners();
           break;
         }

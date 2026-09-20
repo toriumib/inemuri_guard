@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -68,7 +69,10 @@ class WakeUpOverlay extends StatelessWidget {
                     ),
                   ),
                   onPressed: onWake,
-                  child: const Text('起きた・止める', textAlign: TextAlign.center),
+                  child: Text(
+                    context.l10n.awakeStop,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             )
@@ -76,7 +80,7 @@ class WakeUpOverlay extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
               child: Text(
-                '止めるには、目を開けたまま 3 秒。',
+                context.l10n.eyesOpenToStop,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.95),

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Drowsiness Guard</string>
+    <string name="monitor_running">Running</string>
+    <string name="monitor_foreground">App is open</string>
+    <string name="monitor_channel">Monitoring</string>
+    <string name="monitor_description">Shown while detection is running.</string>
+    <string name="camera_permission_missing">Camera permission is missing</string>
+    <string name="camera_not_found">No usable camera found</string>
+    <string name="camera_in_use">Another app is using the camera</string>
+    <string name="camera_error">Camera error (%1$d)</string>
+    <string name="camera_open_failed">Could not open the camera</string>
+    <string name="camera_capture_failed">Could not start camera capture</string>
+    <string name="camera_config_failed">Could not configure the camera</string>
+    <string name="settings_open_failed">Could not open settings</string>
+</resources>

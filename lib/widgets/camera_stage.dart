@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -75,12 +76,12 @@ class CameraStage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: Text(
                     isLive
-                        ? '映像は表示していません。検知は続いています。'
+                        ? context.l10n.previewHidden
                         : (detector.state == DetectorState.starting
-                              ? 'カメラを起動しています…'
+                              ? context.l10n.cameraStartingHint
                               : (detector.state == DetectorState.denied
-                                    ? 'カメラを使えませんでした。許可を確認してください。'
-                                    : '下のボタンを押すと始まります')),
+                                    ? context.l10n.cameraUnavailableHint
+                                    : context.l10n.pressStartHint)),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white70,
@@ -163,19 +164,24 @@ class CameraStage extends StatelessWidget {
                         Expanded(
                           child: Text(
                             !watching
-                                ? '目 —'
+                                ? context.l10n.eyesUnknown
                                 : noFace
-                                ? '顔 なし'
+                                ? context.l10n.faceMissing
                                 : postureOff
-                                ? '頭が傾いています'
+                                ? context.l10n.headTilted
                                 : lookAway
-                                ? 'よそ見が続いています'
+                                ? context.l10n.lookingAway
                                 : !detector.eyesAvailable
                                 ? (detector.poseAvailable
-                                      ? '目を読めません。姿勢のみ監視中'
-                                      : '目と姿勢を確認中')
-                                : '目 ${closed ? '閉' : '開'} '
-                                      '${(detector.eyeOpenness * 100).toStringAsFixed(0)}%',
+                                      ? context.l10n.poseOnlyHint
+                                      : context.l10n.checkingEyesPose)
+                                : context.l10n.eyeReading(
+                                    closed
+                                        ? context.l10n.eyesClosed
+                                        : context.l10n.eyesOpen,
+                                    (detector.eyeOpenness * 100)
+                                        .toStringAsFixed(0),
+                                  ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontFamily: 'monospace',
@@ -186,8 +192,10 @@ class CameraStage extends StatelessWidget {
                         ),
                         Text(
                           // 「閉じている時間」だと 360dp で左の文が「顔が…」に潰れる。
-                          '閉じて '
-                          '${(detector.closedFor.inMilliseconds / 1000).toStringAsFixed(1)}s',
+                          context.l10n.closedDuration(
+                            (detector.closedFor.inMilliseconds / 1000)
+                                .toStringAsFixed(1),
+                          ),
                           style: const TextStyle(
                             color: Colors.white,
                             fontFamily: 'monospace',
@@ -269,7 +277,11 @@ class ReadoutTiles extends StatelessWidget {
         const SizedBox(width: 8),
         _Tile(
           label: 'FACE',
-          value: !watching ? '—' : (detector.noFaceSeen ? 'なし' : '検出'),
+          value: !watching
+              ? '—'
+              : (detector.noFaceSeen
+                    ? context.l10n.none
+                    : context.l10n.detected),
           hot: watching && detector.noFaceSeen,
           hotColor: c.accentNap,
         ),

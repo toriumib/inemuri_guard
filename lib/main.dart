@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'l10n/app_language.dart';
 
 import 'screens/home_shell.dart';
 import 'screens/terms_gate.dart';
@@ -159,7 +160,11 @@ class InemuriGuardApp extends StatelessWidget {
       // whole app immediately, in both light and dark.
       child: Consumer<StatsService>(
         builder: (context, stats, _) => MaterialApp(
-          title: '居眠りガード',
+          onGenerateTitle: (context) => context.l10n.appName,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localeListResolutionCallback: (locales, _) =>
+              AppLanguage.resolve(locales ?? const []),
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightFor(stats.selectedSkin),
           darkTheme: AppTheme.darkFor(stats.selectedSkin),

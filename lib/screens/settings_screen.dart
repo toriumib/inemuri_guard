@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_language.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -89,13 +90,11 @@ class _DetectionSettingsCard extends StatelessWidget {
                 builder: (context, _) => SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  title: const Text('声で止める'),
+                  title: Text(context.l10n.voiceStopTitle),
                   subtitle: Text(
                     VoiceStop.instance.unavailable
-                        ? 'この端末では音声認識が使えませんでした。音・振動・ボタンで止められます。'
-                        : '鳴っている間「起きた」「止めて」と言うと止まります。'
-                              '端末の音声認識を使います（寝息検知を使っている間は声では止められません）。'
-                              '${VoiceStop.instance.lastHeard.isEmpty ? '' : '\n直近に聞こえた言葉: 「${VoiceStop.instance.lastHeard}」'}',
+                        ? context.l10n.voiceUnavailable
+                        : context.l10n.voiceStopHint,
                   ),
                   value: stats.voiceStop,
                   onChanged: (v) async {

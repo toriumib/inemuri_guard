@@ -177,3 +177,17 @@ timers are stopped. Ads are disposed on backgrounding or activity changes;
 interstitials are removed. UMP consent is checked before ad requests, and required
 forms are opened explicitly from settings. Monitoring never waits for ads or
 consent. Automated tests pass; device checks and store release are still pending.
+
+## 2026-09-21 主要操作の日英対応（1.9.0）
+
+初回準備、開始・停止、入力状態と復旧、感度、警告、通知の停止操作、時計テストを日英化。端末の優先言語に合わせ、未対応言語では英語を使用する。任意の音声停止も認識器の対応言語を選び、英語の「stop」「I'm awake」に対応。言語変更で準備状態を失わず、言語取得中に警告を止めても後から認識を開始しない。
+
+設定・仮眠・記録・改善画面などは翻訳が残るため、完全英語化とは案内しない。実装範囲・翻訳手順・残件は [日英対応の記録](docs/internationalization.md)。利用者増加は未測定。リポジトリ公開設定とライセンスは変更していない。
+
+Version 1.9.0 localizes the main monitoring and first-use flow, recovery, alarms
+and watch notification tests in Japanese and English. Optional voice control
+selects a supported recognizer locale and accepts English stop phrases. Most
+secondary screens still need translation; full English support and store release
+are not claimed. See the localization document for scope and device checks.
+
+検証結果: 自動テスト119件成功、静的解析指摘なし、v1.9.0+14 debug APKビルド成功。実機検証とストア提出は未実施。

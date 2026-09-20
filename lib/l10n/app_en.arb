@@ -1,0 +1,249 @@
+{
+  "@@locale": "en",
+  "appName": "Drowsiness Guard",
+  "setupTitle": "Quick setup",
+  "setupReady": "Your face and eyes are visible. Now check the sound.",
+  "setupSteps": "1. Tap “Start monitoring” below and allow the camera.\n2. Position your phone so your face and eyes are visible.\n3. Check the sound.",
+  "soundOutputFailed": "Could not play the sound. Check the volume and audio output.",
+  "checkSound": "Check the sound",
+  "saveFailed": "Could not save. Please try again.",
+  "setupComplete": "I heard it — finish setup",
+  "dismissForNow": "Dismiss for now",
+  "setupHint": "Next time, you can start with your saved settings. You can set up notifications and watch alerts later in Settings.",
+  "cameraRecoveryHint": "Tap “Reconnect camera” below. Close any other app that is using the camera.",
+  "faceRecoveryHint": "Keep only your face in view and improve the lighting. Restart monitoring when a different person uses the app.",
+  "eyeRecoveryHint": "Adjust your angle or reflections on glasses. Closed eyes cannot be detected while your eyes are unreadable.",
+  "micListening": "Microphone active (breathing sound detection)",
+  "micStarting": "Starting microphone",
+  "micStopped": "Microphone input stopped",
+  "micPermission": "Check microphone permission",
+  "deviceSettingsFailed": "Could not change this setting. Open your device settings to change it.",
+  "beforeUsing": "Before you start",
+  "volumeZero": "Alarm volume is zero. Turn it up, then tap “Test sound”.",
+  "openVolume": "Open volume settings",
+  "notificationHint": "Allow notifications to stop an alarm without reopening the app.",
+  "enableNotifications": "Enable notifications",
+  "shortcutHint": "Add a Quick Settings tile to open the app by swiping down from the top of your screen.",
+  "shortcutAdded": "Added to Quick Settings",
+  "addShortcut": "Add to Quick Settings",
+  "shortcutManual": "Edit Quick Settings and add “Drowsiness Guard”.",
+  "sensitivityTitle": "Detection sensitivity",
+  "sensitivityStandard": "Standard",
+  "sensitivitySensitive": "Sensitive",
+  "sensitivityCustom": "Custom",
+  "thresholdTitle": "Seconds before alerting",
+  "mapsFailed": "Could not open maps.",
+  "positionPhone": "Stand your phone up, facing you.",
+  "continueWorking": "Monitoring is active. You can continue your task.",
+  "positionHint": "Keep your face and eyes in view. You can adjust settings later.",
+  "preparing": "Getting ready…",
+  "stopMonitoring": "Stop monitoring",
+  "startMonitoring": "Start monitoring",
+  "soundFailed": "Could not play the sound. Check your volume settings.",
+  "testSound": "Test sound",
+  "hidePreview": "Hide preview",
+  "showPreview": "Show preview",
+  "cameraPermission": "Open camera permissions",
+  "reconnectCamera": "Reconnect camera",
+  "restSafely": "Stop somewhere safe and rest",
+  "restSafelyHint": "If you feel drowsy, park somewhere safe and rest. Use maps only after parking.",
+  "close": "Close",
+  "watchOptions": "Sensitivity and placement",
+  "car": "Car",
+  "desk": "Desk",
+  "drivingWarning": "Do not operate the app while driving. It is an aid and cannot guarantee your safety.",
+  "parkThenMaps": "Park first, then open maps",
+  "detectionDetails": "Detection details",
+  "falseAlertHint": "Alerted while you were awake? You can adjust sensitivity.",
+  "adjustSensitivity": "Adjust sensitivity",
+  "sensitivityManual": "Sensitivity stays as you set it. Change it only if needed.",
+  "starting": "Starting…",
+  "stop": "Stop",
+  "beginDetection": "Start monitoring",
+  "navDetect": "Monitor",
+  "navNap": "Nap",
+  "navHistory": "History",
+  "navImprove": "Habits",
+  "navSettings": "Settings",
+  "notification": "Notification",
+  "notificationArrived": "A notification arrived",
+  "drowsinessDetection": "Drowsiness detection",
+  "napTimer": "Nap timer",
+  "raiseHead": "⚠ Wake up! Raise your head",
+  "openEyes": "⚠ Wake up! Open your eyes",
+  "breathingAlert": "⚠ Sleep-like breathing detected",
+  "wakeTime": "⏰ Time to wake up!",
+  "monitoringStatus": "Monitoring status",
+  "restartMic": "Restart microphone detection",
+  "returnToResume": "Return to the app to resume",
+  "drowsinessSigns": "Possible signs of drowsiness",
+  "monitoringMic": "Monitoring microphone",
+  "pomodoro": "Pomodoro",
+  "currentMode": "Current mode",
+  "idle": "Ready",
+  "previewHidden": "Preview hidden. Detection is still running.",
+  "cameraStartingHint": "Starting camera…",
+  "cameraUnavailableHint": "Camera unavailable. Check camera permission.",
+  "pressStartHint": "Tap the start button to begin",
+  "eyesUnknown": "Eyes —",
+  "faceMissing": "No face",
+  "headTilted": "Head tilted",
+  "lookingAway": "Looking away",
+  "poseOnlyHint": "Eyes unreadable. Monitoring posture only",
+  "checkingEyesPose": "Checking eyes and posture",
+  "none": "None",
+  "detected": "Detected",
+  "stopAlarm": "Stop",
+  "illuminating": "Lighting up the screen to find your face.\nNormal brightness returns when your face is detected.",
+  "awakeStop": "I’m awake — stop",
+  "eyesOpenToStop": "Keep your eyes open for 3 seconds to stop.",
+  "cameraUnavailable": "Camera unavailable",
+  "cameraStarting": "Starting camera",
+  "monitoringStopped": "Monitoring stopped",
+  "cameraInputStopped": "Camera input stopped",
+  "targetFaceMissing": "Your face is not visible",
+  "poseOnly": "Monitoring posture only (eyes unreadable)",
+  "checkingFaceEyes": "Checking face and eyes",
+  "watchingEyesPose": "Monitoring eyes and posture",
+  "watchingEyes": "Monitoring eyes",
+  "running": "Running",
+  "eyesClosedReason": "Your eyes have stayed closed",
+  "headTiltReason": "Your head has stayed tilted. Sit upright",
+  "breathingReason": "Regular, sleep-like breathing sounds detected",
+  "napReason": "Your nap timer has ended",
+  "alarmOutputFailed": "Alarm output failed. Check sound settings.",
+  "micInputFailed": "Microphone input stopped. Check permission and restart.",
+  "toneChime": "Chime",
+  "toneSiren": "Siren",
+  "toneBell": "Ringing bell",
+  "possibleDrowsiness": "Possible signs of drowsiness detected",
+  "wakeUp": "Wake up",
+  "alarmChannel": "Drowsiness and nap alarms",
+  "alarmChannelDescription": "Alerts for closed eyes, sleep-like breathing or the end of a nap, with mirroring to compatible watches",
+  "pomodoroDescription": "Signals when a work or break interval ends",
+  "hydration": "Hydration",
+  "hydrationDescription": "Reminders to drink water at your chosen interval",
+  "restChannel": "Rest reminders",
+  "restChannelDescription": "Reminders to park somewhere safe and rest when drowsiness is detected in car mode",
+  "watchTestTitle": "Drowsiness Guard — watch test",
+  "watchTestBody": "Check whether your watch vibrated. This is a test.",
+  "takeRest": "Time to rest",
+  "sensitivityExplanation": "Alerts after {seconds} seconds of closed eyes or a tilted head. Higher sensitivity can trigger alerts during brief movements. PERCLOS and breathing settings stay unchanged.",
+  "@sensitivityExplanation": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "optionsSummary": "{sensitivity} · {placement}",
+  "@optionsSummary": {
+    "placeholders": {
+      "sensitivity": {
+        "type": "String"
+      },
+      "placement": {
+        "type": "String"
+      }
+    }
+  },
+  "eyesOpenRemaining": "Keep your eyes open: {seconds}s remaining",
+  "@eyesOpenRemaining": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "napRunning": "{minutes}-minute nap in progress",
+  "@napRunning": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroStatus": "{phase} {time}",
+  "@pomodoroStatus": {
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eyeReading": "Eyes {state} {percent}%",
+  "@eyeReading": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "closedDuration": "Closed {seconds}s",
+  "@closedDuration": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgeReason": "A notification arrived from {app}",
+  "@nudgeReason": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "durationSeconds": "{seconds}s",
+  "@durationSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "sliderEndpoint": "{value} ({label})",
+  "@sliderEndpoint": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "workPhase": "Working",
+  "breakPhase": "On a break",
+  "eyesClosed": "closed",
+  "eyesOpen": "open",
+  "lessSensitive": "Less sensitive",
+  "restBody": "Drowsiness detected. Park somewhere safe and rest.",
+  "restDetails": "Drowsiness detected. Park somewhere safe and rest. After parking, tap to open the app and find nearby parking on a map.",
+  "termsTitle": "Before you start",
+  "termsIntro": "Read the points below, then tap “Agree and start” to use the app.",
+  "termsAidTitle": "An aid, with limits",
+  "termsAidBody": "This app is not a substitute for sleep, a medical device or a safety system.",
+  "termsMissTitle": "Alerts can be missed or incorrect",
+  "termsMissBody": "Darkness, glasses, sunglasses, masks or a face outside the camera view can affect detection. No alert does not mean it is safe to continue.",
+  "termsDrivingTitle": "In a vehicle, use only as an aid",
+  "termsDrivingBody": "You remain responsible for driving safely and following local laws. Do not operate the app while driving. If you feel drowsy, park somewhere safe and rest. We accept no liability for accidents or damage caused by relying on this app.",
+  "privacyTitle": "Privacy",
+  "termsPrivacyBody": "Camera and breathing detection run on your device without saving recordings. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.",
+  "termsAsIsTitle": "Provided as is",
+  "termsAsIsBody": "Accuracy and continued availability are not guaranteed. Purchases and refunds follow Google Play’s rules.",
+  "termsFull": "Full terms",
+  "privacyLink": "Privacy policy (Japanese)",
+  "agreeStart": "Agree and start",
+  "termsRequired": "You must agree to use the app.",
+  "voiceStopTitle": "Stop by voice",
+  "voiceUnavailable": "Speech recognition is unavailable for this language. Use the on-screen button, volume keys or notification stop button.",
+  "voiceStopHint": "Say “stop” or “I’m awake” while the alarm is ringing. This uses your device’s speech recognition service, which may send audio to its provider. Unavailable while breathing detection uses the microphone."
+}

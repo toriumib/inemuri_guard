@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
@@ -11,9 +12,9 @@ enum AlarmTone { chime, siren, bell }
 
 extension AlarmToneX on AlarmTone {
   String get label => switch (this) {
-    AlarmTone.chime => 'チャイム',
-    AlarmTone.siren => 'サイレン',
-    AlarmTone.bell => 'ベル連打',
+    AlarmTone.chime => AppLanguage.current.toneChime,
+    AlarmTone.siren => AppLanguage.current.toneSiren,
+    AlarmTone.bell => AppLanguage.current.toneBell,
   };
 
   String get asset => switch (this) {
@@ -103,12 +104,15 @@ class AlarmService extends ChangeNotifier {
     }
   }
 
-  Future<void> start({String reason = '居眠りの兆候を検知しました'}) async {
+  Future<void> start({String? reason}) async {
+    reason ??= AppLanguage.current.possibleDrowsiness;
     if (isFiring) {
       if (_reason != reason) {
         _reason = reason;
         unawaited(
-          notifications.fireAlarm('起きてください', reason).catchError((_) {}),
+          notifications
+              .fireAlarm(AppLanguage.current.wakeUp, reason)
+              .catchError((_) {}),
         );
       }
       return;
@@ -119,7 +123,11 @@ class AlarmService extends ChangeNotifier {
     // 通知を最初に投げる。音声の初期化は環境によって止まることがあり
     // （エミュレータやフォーカス争奪で await が返らないのを確認済み）、
     // 時計への転送だけは音の成否に引きずられないようにする。
-    unawaited(notifications.fireAlarm('起きてください', reason).catchError((_) {}));
+    unawaited(
+      notifications
+          .fireAlarm(AppLanguage.current.wakeUp, reason)
+          .catchError((_) {}),
+    );
     if (generation != _generation) return;
     _starting = false;
     unawaited(_burst(generation).catchError((_) {}));

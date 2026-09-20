@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,7 +19,7 @@ class QuickSetupCard extends StatelessWidget {
     final ok = await readiness.open(action);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('設定を変更できませんでした。端末の設定から変更できます。')),
+        SnackBar(content: Text(context.l10n.deviceSettingsFailed)),
       );
     }
   }
@@ -35,39 +36,46 @@ class QuickSetupCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('使う前に確認', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              context.l10n.beforeUsing,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             if (device.silent) ...[
-              const Text('アラーム音量が0です。音量を上げて「音を試す」で確認してください。'),
+              Text(context.l10n.volumeZero),
               OutlinedButton.icon(
                 onPressed: device.busy
                     ? null
                     : () => _open(context, 'soundSettings'),
                 icon: const Icon(Icons.volume_up_outlined),
-                label: const Text('音量の設定を開く'),
+                label: Text(context.l10n.openVolume),
               ),
             ],
             if (device.notifications == false) ...[
-              const Text('通知を許可すると、アプリの外からもアラームを止められます。'),
+              Text(context.l10n.notificationHint),
               OutlinedButton.icon(
                 onPressed: device.busy
                     ? null
                     : () => _open(context, 'notificationSettings'),
                 icon: const Icon(Icons.notifications_outlined),
-                label: const Text('通知を使えるようにする'),
+                label: Text(context.l10n.enableNotifications),
               ),
             ],
             if (showShortcut) ...[
-              const Text('画面上から下にスワイプするクイック設定に置くと、アプリを探さず開けます。'),
+              Text(context.l10n.shortcutHint),
               if (device.canAddTile)
                 OutlinedButton.icon(
                   onPressed: device.busy || device.tileAdded
                       ? null
                       : () => _open(context, 'addTile'),
                   icon: const Icon(Icons.dashboard_customize_outlined),
-                  label: Text(device.tileAdded ? 'クイック設定に追加済み' : 'クイック設定に追加'),
+                  label: Text(
+                    device.tileAdded
+                        ? context.l10n.shortcutAdded
+                        : context.l10n.addShortcut,
+                  ),
                 )
               else
-                const Text('クイック設定の編集ボタンから「居眠りガード」を追加できます。'),
+                Text(context.l10n.shortcutManual),
             ],
           ],
         ),

@@ -150,17 +150,17 @@ class EyeService : Service() {
                 //    「背面から開始」できないので、背面に入ってから
                 //    startForegroundService すると SecurityException で落ちる
                 //    （実機のログで確認済み）。開始と取得を分けているのはこのため。
-                startForegroundWithType("動作中")
+                startForegroundWithType(getString(R.string.monitor_running))
                 if (!isRunning && !opening) openCamera()
             }
             ACTION_RELEASE -> {
                 closeCamera()
-                startForegroundWithType("画面を開いています")
+                startForegroundWithType(getString(R.string.monitor_foreground))
             }
             else -> {
                 // 前面にいるうちに前景化だけしておく。カメラはまだ Flutter 側が
                 // プレビューに使っているので触らない。
-                val text = intent?.getStringExtra(EXTRA_TEXT) ?: "動作中"
+                val text = intent?.getStringExtra(EXTRA_TEXT) ?: getString(R.string.monitor_running)
                 startForegroundWithType(text)
             }
         }
@@ -178,7 +178,7 @@ class EyeService : Service() {
         // 中身を明かさない文面にしてある。ロック画面に「居眠りを検知中」と
         // 出ること自体が、周りへの告知になってしまうため。
         val n: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("居眠りガード")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)
@@ -209,9 +209,9 @@ class EyeService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) != null) return
         val ch = NotificationChannel(
-            CHANNEL_ID, "見張り中", NotificationManager.IMPORTANCE_LOW
+            CHANNEL_ID, getString(R.string.monitor_channel), NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "検知を続けているあいだ表示されます。"
+            description = getString(R.string.monitor_description)
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
@@ -224,7 +224,7 @@ class EyeService : Service() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            failed("カメラの許可がありません")
+            failed(getString(R.string.camera_permission_missing))
             return
         }
 
@@ -254,7 +254,7 @@ class EyeService : Service() {
         } ?: cm.cameraIdList.firstOrNull()
 
         if (frontId == null) {
-            failed("使えるカメラが見つかりません")
+            failed(getString(R.string.camera_not_found))
             return
         }
 
@@ -280,17 +280,17 @@ class EyeService : Service() {
 
                 override fun onDisconnected(device: CameraDevice) {
                     device.close(); cameraDevice = null
-                    failed("カメラが他のアプリに使われました")
+                    failed(getString(R.string.camera_in_use))
                 }
 
                 override fun onError(device: CameraDevice, error: Int) {
                     device.close(); cameraDevice = null
-                    failed("カメラのエラー（$error）")
+                    failed(getString(R.string.camera_error, error))
                 }
             }, handler)
         } catch (e: SecurityException) {
             Log.e(TAG, "カメラを開けない", e)
-            failed("カメラを開けませんでした")
+            failed(getString(R.string.camera_open_failed))
         }
     }
 
@@ -344,12 +344,12 @@ class EyeService : Service() {
                         s.setRepeatingRequest(req.build(), null, handler)
                     } catch (e: Exception) {
                         Log.e(TAG, "撮影を開始できない", e)
-                        failed("カメラの撮影を開始できませんでした")
+                        failed(getString(R.string.camera_capture_failed))
                     }
                 }
 
                 override fun onConfigureFailed(s: CameraCaptureSession) {
-                    failed("カメラを構成できませんでした")
+                    failed(getString(R.string.camera_config_failed))
                 }
             },
             handler

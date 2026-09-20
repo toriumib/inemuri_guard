@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import '../theme/app_theme.dart';
@@ -58,7 +59,7 @@ class StatusHero extends StatelessWidget {
       ),
     );
     final Widget? action = onSnooze != null
-        ? FilledButton(onPressed: onSnooze, child: const Text('止める'))
+        ? FilledButton(onPressed: onSnooze, child: Text(context.l10n.stopAlarm))
         : primaryLabel == null
         ? null
         : OutlinedButton(onPressed: onPrimary, child: Text(primaryLabel!));
@@ -224,8 +225,8 @@ class _IlluminateOverlayState extends State<IlluminateOverlay> {
         color: Colors.white.withValues(alpha: 0.9),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(32),
-        child: const Text(
-          '暗いので画面で照らしています。\n顔が見つかると元に戻ります。',
+        child: Text(
+          context.l10n.illuminating,
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.black54, fontSize: 15, height: 1.6),
         ),

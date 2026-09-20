@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../l10n/app_language.dart';
 
 /// 「何秒／何分」を1本のスライダーで選ぶ行。
 ///
@@ -18,9 +19,9 @@ class RangeSliderRow extends StatefulWidget {
   final int min;
   final int max;
   final int step;
-  final String unit;
-  final String minLabel;
-  final String maxLabel;
+  final String? unit;
+  final String? minLabel;
+  final String? maxLabel;
   const RangeSliderRow({
     super.key,
     required this.title,
@@ -30,9 +31,9 @@ class RangeSliderRow extends StatefulWidget {
     this.min = 3,
     this.max = 60,
     this.step = 1,
-    this.unit = '秒',
-    this.minLabel = '敏感',
-    this.maxLabel = '鈍感',
+    this.unit,
+    this.minLabel,
+    this.maxLabel,
   });
 
   @override
@@ -48,6 +49,9 @@ class RangeSliderRowState extends State<RangeSliderRow> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final shown = (_dragging ?? widget.value.toDouble()).round();
+    String valueLabel(int value) => widget.unit == null
+        ? context.l10n.durationSeconds(value)
+        : '$value${widget.unit}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +65,7 @@ class RangeSliderRowState extends State<RangeSliderRow> {
               ),
             ),
             Text(
-              '$shown${widget.unit}',
+              valueLabel(shown),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: widget.color,
                 fontWeight: FontWeight.w700,
@@ -77,7 +81,7 @@ class RangeSliderRowState extends State<RangeSliderRow> {
           min: widget.min.toDouble(),
           max: widget.max.toDouble(),
           divisions: (widget.max - widget.min) ~/ widget.step,
-          label: '$shown${widget.unit}',
+          label: valueLabel(shown),
           activeColor: widget.color,
           // 溝の色を明示する。テーマ任せだとカードの白地に溶けて、
           // つまみだけが宙に浮いて見える（実機で確認）。
@@ -88,17 +92,25 @@ class RangeSliderRowState extends State<RangeSliderRow> {
             widget.onChanged(v.round());
           },
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 16,
+          runSpacing: 4,
           children: [
             Text(
-              '${widget.min}${widget.unit}（${widget.minLabel}）',
+              context.l10n.sliderEndpoint(
+                valueLabel(widget.min),
+                widget.minLabel ?? context.l10n.sensitivitySensitive,
+              ),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(fontSize: 12, color: c.textDim),
             ),
             Text(
-              '${widget.max}${widget.unit}（${widget.maxLabel}）',
+              context.l10n.sliderEndpoint(
+                valueLabel(widget.max),
+                widget.maxLabel ?? context.l10n.lessSensitive,
+              ),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(fontSize: 12, color: c.textDim),

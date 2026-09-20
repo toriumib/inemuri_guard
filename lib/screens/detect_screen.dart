@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -103,7 +104,7 @@ class _DetectScreenState extends State<DetectScreen>
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('地図を開けませんでした。')));
+        ).showSnackBar(SnackBar(content: Text(context.l10n.mapsFailed)));
       }
     }
   }
@@ -120,14 +121,14 @@ class _DetectScreenState extends State<DetectScreen>
       children: [
         const FirstUseCard(),
         Text(
-          'スマホを立てて、自分に向けるだけ。',
+          context.l10n.positionPhone,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 6),
         Text(
           watching && detector.eyesAvailable
-              ? '見張っています。そのまま作業を続けられます。'
-              : '顔と目が映る位置に置いてください。細かな設定は後から変えられます。',
+              ? context.l10n.continueWorking
+              : context.l10n.positionHint,
         ),
         const SizedBox(height: 16),
         const MonitoringStatus(),
@@ -141,10 +142,10 @@ class _DetectScreenState extends State<DetectScreen>
           ),
           label: Text(
             starting
-                ? '準備しています…'
+                ? context.l10n.preparing
                 : watching
-                ? '見張りを止める'
-                : '見張りを始める',
+                ? context.l10n.stopMonitoring
+                : context.l10n.startMonitoring,
           ),
         ),
         const SizedBox(height: 8),
@@ -159,15 +160,13 @@ class _DetectScreenState extends State<DetectScreen>
                 } catch (_) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('音を再生できませんでした。音量の設定を確認してください。'),
-                      ),
+                      SnackBar(content: Text(context.l10n.soundFailed)),
                     );
                   }
                 }
               },
               icon: const Icon(Icons.volume_up_outlined),
-              label: const Text('音を試す'),
+              label: Text(context.l10n.testSound),
             ),
             TextButton.icon(
               onPressed: () =>
@@ -177,7 +176,11 @@ class _DetectScreenState extends State<DetectScreen>
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
               ),
-              label: Text(stats.showCameraPreview ? '映像を隠す' : '映像を確認'),
+              label: Text(
+                stats.showCameraPreview
+                    ? context.l10n.hidePreview
+                    : context.l10n.showPreview,
+              ),
             ),
           ],
         ),
@@ -189,13 +192,13 @@ class _DetectScreenState extends State<DetectScreen>
               if (!opened) _resumeAfterPermission = false;
             },
             icon: const Icon(Icons.settings_outlined),
-            label: const Text('カメラの許可を設定する'),
+            label: Text(context.l10n.cameraPermission),
           ),
         if (watching && (detector.inputStalled || detector.faceLostLong))
           OutlinedButton.icon(
             onPressed: _recovering ? null : _retry,
             icon: const Icon(Icons.refresh),
-            label: const Text('カメラをつなぎ直す'),
+            label: Text(context.l10n.reconnectCamera),
           ),
         const QuickSetupCard(),
         if (stats.showCameraPreview) ...[
@@ -210,13 +213,13 @@ class _DetectScreenState extends State<DetectScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '安全な場所で休憩しましょう',
+                    context.l10n.restSafely,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const Text('眠気を感じたら、安全な場所に停めて休んでください。地図は停車してから操作してください。'),
+                  Text(context.l10n.restSafelyHint),
                   TextButton(
                     onPressed: alerts.dismissRestAdvice,
-                    child: const Text('閉じる'),
+                    child: Text(context.l10n.close),
                   ),
                 ],
               ),
@@ -226,13 +229,16 @@ class _DetectScreenState extends State<DetectScreen>
         Card(
           child: ExpansionTile(
             key: const PageStorageKey('watch-options'),
-            title: const Text('感度・使う場所を変える'),
+            title: Text(context.l10n.watchOptions),
             subtitle: Text(
-              '${stats.sensitivity == DetectionSensitivity.sensitive
-                  ? '敏感'
-                  : stats.sensitivity == DetectionSensitivity.standard
-                  ? '標準'
-                  : '詳細設定'}・${stats.carMode ? '車' : '机の上'}',
+              context.l10n.optionsSummary(
+                stats.sensitivity == DetectionSensitivity.sensitive
+                    ? context.l10n.sensitivitySensitive
+                    : stats.sensitivity == DetectionSensitivity.standard
+                    ? context.l10n.sensitivityStandard
+                    : context.l10n.sensitivityCustom,
+                stats.carMode ? context.l10n.car : context.l10n.desk,
+              ),
             ),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             children: [
@@ -243,7 +249,7 @@ class _DetectScreenState extends State<DetectScreen>
                 children: [
                   for (final car in [false, true])
                     ChoiceChip(
-                      label: Text(car ? '車' : '机の上'),
+                      label: Text(car ? context.l10n.car : context.l10n.desk),
                       selected: stats.carMode == car,
                       onSelected: (_) async {
                         await stats.setCarMode(car);
@@ -253,11 +259,11 @@ class _DetectScreenState extends State<DetectScreen>
                 ],
               ),
               if (stats.carMode) ...[
-                const Text('運転中は操作しないでください。補助の道具であり、安全を保証するものではありません。'),
+                Text(context.l10n.drivingWarning),
                 OutlinedButton.icon(
                   onPressed: _maps,
                   icon: const Icon(Icons.map_outlined),
-                  label: const Text('停車して地図を開く'),
+                  label: Text(context.l10n.parkThenMaps),
                 ),
               ],
             ],
@@ -265,7 +271,7 @@ class _DetectScreenState extends State<DetectScreen>
         ),
         Card(
           child: ExpansionTile(
-            title: const Text('検知の詳しい情報'),
+            title: Text(context.l10n.detectionDetails),
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),

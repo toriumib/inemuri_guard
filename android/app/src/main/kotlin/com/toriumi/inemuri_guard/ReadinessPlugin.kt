@@ -60,7 +60,7 @@ class ReadinessPlugin(private val activity: Activity, messenger: BinaryMessenger
                         if (Build.VERSION.SDK_INT >= 33) {
                             activity.getSystemService(StatusBarManager::class.java).requestAddTileService(
                                 ComponentName(activity, WatchTileService::class.java),
-                                "居眠りガード", Icon.createWithResource(activity, R.mipmap.ic_launcher),
+                                activity.getString(R.string.app_name), Icon.createWithResource(activity, R.mipmap.ic_launcher),
                                 activity.mainExecutor
                             ) { code -> result.success(code == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
                                 code == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) }
@@ -69,7 +69,7 @@ class ReadinessPlugin(private val activity: Activity, messenger: BinaryMessenger
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
-                result.error("unavailable", "設定を開けませんでした", null)
+                result.error("unavailable", activity.getString(R.string.settings_open_failed), null)
             }
         }
     }

@@ -9,6 +9,7 @@ import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/nap_timer_service.dart';
 import '../services/pomodoro_service.dart';
+import '../l10n/app_language.dart';
 
 bool monitoringAllowsAds({
   required DetectorState detector,
@@ -106,10 +107,7 @@ class _SafeAdPanelState extends State<SafeAdPanel> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final ads = context.watch<AdService>();
-    // The app-wide localization migration is still in progress. Use the device
-    // locale here because MaterialApp currently falls back to English.
-    final english =
-        WidgetsBinding.instance.platformDispatcher.locale.languageCode != 'ja';
+    final english = context.l10n.localeName != 'ja';
     if (!_foreground) return const SizedBox.shrink();
 
     if (widget.settingsSelected &&

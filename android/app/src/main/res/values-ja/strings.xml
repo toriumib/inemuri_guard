@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">居眠りガード</string>
+    <string name="monitor_running">動作中</string>
+    <string name="monitor_foreground">画面を開いています</string>
+    <string name="monitor_channel">見張り中</string>
+    <string name="monitor_description">検知を続けているあいだ表示されます。</string>
+    <string name="camera_permission_missing">カメラの許可がありません</string>
+    <string name="camera_not_found">使えるカメラが見つかりません</string>
+    <string name="camera_in_use">カメラが他のアプリに使われました</string>
+    <string name="camera_error">カメラのエラー（%1$d）</string>
+    <string name="camera_open_failed">カメラを開けませんでした</string>
+    <string name="camera_capture_failed">カメラの撮影を開始できませんでした</string>
+    <string name="camera_config_failed">カメラを構成できませんでした</string>
+    <string name="settings_open_failed">設定を開けませんでした</string>
+</resources>

@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart'
@@ -73,14 +74,16 @@ class DrowsinessDetector extends ChangeNotifier {
   bool get poseAvailable =>
       _lastPoseAt != null &&
       clock().difference(_lastPoseAt!) <= const Duration(seconds: 2);
-  String get monitoringLabel {
-    if (state == DetectorState.denied) return 'カメラを使用できません';
-    if (state == DetectorState.starting) return 'カメラを起動中';
-    if (state != DetectorState.watching) return '監視停止中';
-    if (inputStalled || cameraPausedInBackground) return 'カメラ入力が停止しています';
-    if (noFaceSeen) return '対象の顔が見えません';
-    if (!eyesAvailable) return poseAvailable ? '姿勢のみ監視中（目を読めません）' : '顔・目を確認中';
-    return poseAvailable ? '目と姿勢を監視中' : '目を監視中';
+  String get monitoringLabel => monitoringLabelFor(AppLanguage.current);
+
+  String monitoringLabelFor(AppLocalizations l) {
+    if (state == DetectorState.denied) return l.cameraUnavailable;
+    if (state == DetectorState.starting) return l.cameraStarting;
+    if (state != DetectorState.watching) return l.monitoringStopped;
+    if (inputStalled || cameraPausedInBackground) return l.cameraInputStopped;
+    if (noFaceSeen) return l.targetFaceMissing;
+    if (!eyesAvailable) return poseAvailable ? l.poseOnly : l.checkingFaceEyes;
+    return poseAvailable ? l.watchingEyesPose : l.watchingEyes;
   }
 
   void noteInput() {
@@ -293,7 +296,7 @@ class DrowsinessDetector extends ChangeNotifier {
       backgroundFailure = null;
       await NativeEye.start(
         holder: 'eye',
-        notificationText: '動作中',
+        notificationText: AppLanguage.current.running,
         useBackCamera: useBackCamera,
         onFailed: (message) {
           // 背面での見張りが死んだ。黙って「検知中」を出し続けるより、

@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import 'alarm_keys.dart';
+import '../l10n/app_language.dart';
 
 /// 鳴っている間だけ音声認識を回し、「起きた」「止めて」で止める。
 ///
@@ -23,15 +24,26 @@ class VoiceStop extends ChangeNotifier {
   static final VoiceStop instance = VoiceStop._();
 
   static const words = <String>[
-    '起きた', 'おきた', '起きて', 'おきて', '起きる',
-    '止めて', 'とめて', '止まれ', 'とまれ', 'ストップ', 'stop',
-    '大丈夫', 'だいじょうぶ',
+    '起きた',
+    'おきた',
+    '起きて',
+    'おきて',
+    '起きる',
+    '止めて',
+    'とめて',
+    '止まれ',
+    'とまれ',
+    'ストップ',
+    '大丈夫',
+    'だいじょうぶ',
   ];
   static const maxFor = Duration(seconds: 90);
 
   final SpeechToText _stt = SpeechToText();
   bool _initialized = false;
   bool _active = false;
+  int _generation = 0;
+  String? _localeId;
   DateTime? _deadline;
   Timer? _restart;
 
@@ -51,8 +63,49 @@ class VoiceStop extends ChangeNotifier {
 
   @visibleForTesting
   static bool matches(String heard) {
-    final h = heard.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-    return words.any(h.contains);
+    final normalized = heard.toLowerCase().replaceAll('’', "'");
+    final japanese = normalized.replaceAll(RegExp(r'\s+'), '');
+    return words.any(japanese.contains) ||
+        RegExp(r"\b(stop|i'm\s+awake|i\s+am\s+awake)\b").hasMatch(normalized);
+  }
+
+  /// Preserve the recognizer's locale ID, including its regional variant.
+  @visibleForTesting
+  static String? selectLocale(
+    List<String> available,
+    String language,
+    String? systemLocale,
+  ) {
+    String normalized(String value) => value.replaceAll('_', '-').toLowerCase();
+    final matching = available
+        .where((id) => normalized(id).split('-').first == language)
+        .toList();
+    if (matching.isEmpty) return null;
+    for (final id in matching) {
+      if (systemLocale != null && normalized(id) == normalized(systemLocale)) {
+        return id;
+      }
+    }
+    final preferred = language == 'ja' ? 'ja-jp' : 'en-us';
+    return matching.firstWhere(
+      (id) => normalized(id) == preferred,
+      orElse: () => matching.first,
+    );
+  }
+
+  Future<bool> _selectLocale() async {
+    try {
+      _localeId = selectLocale(
+        (await _stt.locales()).map((locale) => locale.localeId).toList(),
+        AppLanguage.current.localeName,
+        (await _stt.systemLocale())?.localeId,
+      );
+    } catch (_) {
+      _localeId = null;
+    }
+    unavailable = _localeId == null;
+    notifyListeners();
+    return !unavailable;
   }
 
   /// 設定で ON にしたときに呼ぶ。マイクの許可を聞き、認識器を用意する。
@@ -62,7 +115,7 @@ class VoiceStop extends ChangeNotifier {
     final granted = (await Permission.microphone.request()).isGranted;
     if (!granted) return false;
     if (!_initialized) await _init();
-    return _initialized;
+    return _initialized && await _selectLocale();
   }
 
   Future<void> _init() async {
@@ -80,12 +133,17 @@ class VoiceStop extends ChangeNotifier {
 
   Future<void> start() async {
     if (!isSupported || _active) return;
+    final generation = ++_generation;
     // 許可が無いなら黙って何もしない。鳴っている最中にダイアログは出さない。
     if (!await Permission.microphone.isGranted) return;
+    if (generation != _generation) return;
     if (!_initialized) {
       await _init();
       if (!_initialized) return;
     }
+    if (generation != _generation) return;
+    if (!await _selectLocale()) return;
+    if (generation != _generation) return;
     _active = true;
     _deadline = DateTime.now().add(maxFor);
     notifyListeners();
@@ -94,13 +152,15 @@ class VoiceStop extends ChangeNotifier {
 
   Future<void> _listen() async {
     if (!_active) return;
+    final generation = _generation;
     // 認識の開始でシステムが音量を触ることがある。音量キーと取り違えない。
     await AlarmKeys.ignoreVolumeBriefly(2000);
+    if (!_active || generation != _generation) return;
     try {
       await _stt.listen(
         onResult: _onResult,
         listenOptions: SpeechListenOptions(
-          localeId: 'ja_JP',
+          localeId: _localeId,
           listenFor: const Duration(seconds: 15),
           pauseFor: const Duration(seconds: 5),
           partialResults: true,
@@ -115,8 +175,8 @@ class VoiceStop extends ChangeNotifier {
   }
 
   void _onResult(SpeechRecognitionResult r) {
+    if (!_active) return;
     lastHeard = r.recognizedWords;
-    debugPrint('VoiceStop heard: "${r.recognizedWords}"');
     notifyListeners();
     if (matches(r.recognizedWords)) {
       final cb = onStop;
@@ -144,6 +204,7 @@ class VoiceStop extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _generation++;
     _restart?.cancel();
     _restart = null;
     if (!_active) return;

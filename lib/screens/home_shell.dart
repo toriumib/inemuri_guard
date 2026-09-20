@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -171,9 +172,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (detectionAlarm) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('起きていたのに鳴りましたか？感度を調整できます。'),
+          content: Text(context.l10n.falseAlertHint),
           action: SnackBarAction(
-            label: '感度を調整',
+            label: context.l10n.adjustSensitivity,
             onPressed: () {
               final detector = context.read<DrowsinessDetector>();
               final stats = context.read<StatsService>();
@@ -185,13 +186,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     ChangeNotifierProvider.value(value: detector),
                     ChangeNotifierProvider.value(value: stats),
                   ],
-                  child: const SafeArea(
+                  child: SafeArea(
                     child: Padding(
                       padding: EdgeInsets.all(24),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('感度は自動で変わりません。必要な場合だけ変更してください。'),
+                          Text(context.l10n.sensitivityManual),
                           SensitivityControl(),
                         ],
                       ),
@@ -250,10 +251,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     primaryLabel: _index == 0
                         ? null
                         : detector.state == DetectorState.starting
-                        ? '起動中…'
+                        ? context.l10n.starting
                         : (detector.state == DetectorState.watching
-                              ? '停止'
-                              : '検知を開始'),
+                              ? context.l10n.stop
+                              : context.l10n.beginDetection),
                     primaryIsStop: detector.state == DetectorState.watching,
                     onPrimary: detector.state == DetectorState.starting
                         ? null
@@ -328,15 +329,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         backgroundColor: c.surface,
         indicatorColor: c.accentAlert.withValues(alpha: 0.15),
         destinations: [
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.visibility_outlined),
             selectedIcon: Icon(Icons.visibility),
-            label: '検知',
+            label: context.l10n.navDetect,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.bedtime_outlined),
             selectedIcon: Icon(Icons.bedtime),
-            label: '仮眠',
+            label: context.l10n.navNap,
           ),
           NavigationDestination(
             // A dot on the tab is the only nudge toward the consult card —
@@ -351,17 +352,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               backgroundColor: c.accentAlert,
               child: const Icon(Icons.event_note),
             ),
-            label: '記録',
+            label: context.l10n.navHistory,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.self_improvement_outlined),
             selectedIcon: Icon(Icons.self_improvement),
-            label: '改善',
+            label: context.l10n.navImprove,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
-            label: '設定',
+            label: context.l10n.navSettings,
           ),
         ],
       ),
@@ -381,8 +382,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         nap.phase != NapPhase.done) {
       return (
         StatusMode.alert,
-        '通知',
-        context.read<AlertCoordinator>().reason ?? '通知が届きました',
+        context.l10n.notification,
+        context.read<AlertCoordinator>().reason ??
+            context.l10n.notificationArrived,
       );
     }
     if (anyAlarming) {
@@ -393,33 +395,53 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           .clamp(0, DrowsinessDetector.eyesOpenToStop.inSeconds);
       return (
         StatusMode.alert,
-        (detector.alarmFiring || breathing.alarmFiring) ? '居眠り検知' : '仮眠タイマー',
+        (detector.alarmFiring || breathing.alarmFiring)
+            ? context.l10n.drowsinessDetection
+            : context.l10n.napTimer,
         detector.alarmFiring
             ? (detector.alarmCause == 'posture'
-                  ? '⚠ 起きて！頭を起こしてください'
+                  ? context.l10n.raiseHead
                   : detector.openFor > Duration.zero
-                  ? '目を開けたまま あと$remain秒'
-                  : '⚠ 起きて！目を開けてください')
-            : (breathing.alarmFiring ? '⚠ 寝息を検知しました！' : '⏰ 起床時間！'),
+                  ? context.l10n.eyesOpenRemaining(remain)
+                  : context.l10n.openEyes)
+            : (breathing.alarmFiring
+                  ? context.l10n.breathingAlert
+                  : context.l10n.wakeTime),
       );
     }
     if (nap.phase == NapPhase.running) {
-      return (StatusMode.warn, '仮眠タイマー', '${nap.minutes}分仮眠中');
+      return (
+        StatusMode.warn,
+        context.l10n.napTimer,
+        context.l10n.napRunning(nap.minutes),
+      );
     }
     if (detector.state == DetectorState.watching &&
         (detector.inputStalled ||
             detector.noFaceSeen ||
             !detector.eyesAvailable)) {
-      return (StatusMode.warn, '監視状態', detector.monitoringLabel);
+      return (
+        StatusMode.warn,
+        context.l10n.monitoringStatus,
+        detector.monitoringLabelFor(context.l10n),
+      );
     }
     if (breathing.state == MicState.failed) {
-      return (StatusMode.warn, 'マイク入力停止', 'マイク検知を再開してください');
+      return (
+        StatusMode.warn,
+        context.l10n.micStopped,
+        context.l10n.restartMic,
+      );
     }
     if (detector.cameraPausedInBackground &&
         detector.state == DetectorState.watching) {
       // 背面ではカメラが取り上げられている。復帰した瞬間にこの表示が
       // 見えるので、何が起きていたのかが分かる。
-      return (StatusMode.warn, '居眠り検知', '画面を開くと再開します');
+      return (
+        StatusMode.warn,
+        context.l10n.drowsinessDetection,
+        context.l10n.returnToResume,
+      );
     }
     if (detector.state == DetectorState.watching ||
         breathing.state == MicState.listening) {
@@ -434,21 +456,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final ratio = eyeRatio > breathRatio ? eyeRatio : breathRatio;
       return (
         ratio > 0.5 ? StatusMode.warn : StatusMode.watching,
-        '居眠り検知',
+        context.l10n.drowsinessDetection,
         ratio > 0.5
-            ? '眠気の兆候あり'
+            ? context.l10n.drowsinessSigns
             : detector.state == DetectorState.watching
-            ? detector.monitoringLabel
-            : 'マイクを監視中',
+            ? detector.monitoringLabelFor(context.l10n)
+            : context.l10n.monitoringMic,
       );
     }
     if (pomo.isRunning || pomo.isPaused) {
       return (
         StatusMode.watching,
-        'ポモドーロ',
-        '${pomo.isWorkPhase ? '作業中' : '休憩中'} ${pomo.formatted}',
+        context.l10n.pomodoro,
+        context.l10n.pomodoroStatus(
+          pomo.isWorkPhase ? context.l10n.workPhase : context.l10n.breakPhase,
+          pomo.formatted,
+        ),
       );
     }
-    return (StatusMode.idle, '現在のモード', '待機中');
+    return (StatusMode.idle, context.l10n.currentMode, context.l10n.idle);
   }
 }

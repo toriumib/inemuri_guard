@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/stats_service.dart';
@@ -30,12 +31,11 @@ class _FirstUseCardState extends State<FirstUseCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('はじめの準備', style: Theme.of(context).textTheme.titleLarge),
             Text(
-              ready
-                  ? '顔と目を確認できました。次は音を確かめましょう。'
-                  : '① 下の「見張りを始める」を押してカメラを許可\n② 顔と目が映る位置に置く\n③ 音を確認する',
+              context.l10n.setupTitle,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
+            Text(ready ? context.l10n.setupReady : context.l10n.setupSteps),
             if (_error != null) Text(_error!),
             OutlinedButton.icon(
               onPressed: !ready || _busy
@@ -51,7 +51,7 @@ class _FirstUseCardState extends State<FirstUseCard> {
                       } catch (_) {
                         if (mounted) {
                           setState(
-                            () => _error = '再生できませんでした。音量や出力先を確認してください。',
+                            () => _error = context.l10n.soundOutputFailed,
                           );
                         }
                       } finally {
@@ -59,7 +59,7 @@ class _FirstUseCardState extends State<FirstUseCard> {
                       }
                     },
               icon: const Icon(Icons.volume_up),
-              label: const Text('音を確認する'),
+              label: Text(context.l10n.checkSound),
             ),
             if (_tried)
               FilledButton(
@@ -73,18 +73,18 @@ class _FirstUseCardState extends State<FirstUseCard> {
                           if (mounted) {
                             setState(() {
                               _busy = false;
-                              _error = '保存できませんでした。もう一度お試しください。';
+                              _error = context.l10n.saveFailed;
                             });
                           }
                         }
                       },
-                child: const Text('聞こえた・準備完了'),
+                child: Text(context.l10n.setupComplete),
               ),
             TextButton(
               onPressed: () => setState(() => _dismissed = true),
-              child: const Text('今回は閉じる'),
+              child: Text(context.l10n.dismissForNow),
             ),
-            const Text('次回からこの案内を省き、前回の設定で使えます。通知や時計は設定から後で追加できます。'),
+            Text(context.l10n.setupHint),
           ],
         ),
       ),

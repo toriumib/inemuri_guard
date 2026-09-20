@@ -1,3 +1,4 @@
+import '../l10n/app_language.dart';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -51,10 +52,10 @@ class NotificationService implements NotificationScheduler {
     IsolateNameServer.registerPortWithName(_stopPort.sendPort, stopPortName);
     _stopPort.listen((_) => onStopRequested?.call());
 
-    const channel = AndroidNotificationChannel(
+    final channel = AndroidNotificationChannel(
       _channelId,
-      '居眠り・仮眠アラーム',
-      description: '目を閉じた/寝息を検知した、または仮眠タイマー終了時に鳴らす通知（対応する時計への通知転送）',
+      AppLanguage.current.alarmChannel,
+      description: AppLanguage.current.alarmChannelDescription,
       importance: Importance.max,
       playSound:
           false, // the app plays its own alarm tone; this channel is for vibration/bridging only
@@ -63,29 +64,29 @@ class NotificationService implements NotificationScheduler {
     );
     // ポモドーロは「区間が終わった」の合図。音と振動はあるが、居眠りの
     // アラームのように全画面で叩き起こすものではない。
-    const pomodoro = AndroidNotificationChannel(
+    final pomodoro = AndroidNotificationChannel(
       NotificationChannels.pomodoro,
-      'ポモドーロ',
-      description: '作業・休憩の区間が終わったときの合図',
+      AppLanguage.current.pomodoro,
+      description: AppLanguage.current.pomodoroDescription,
       importance: Importance.high,
       playSound: true,
       enableVibration: true,
     );
     // 水分補給はさらに控えめ。ヘッドアップも出さない。
-    const hydration = AndroidNotificationChannel(
+    final hydration = AndroidNotificationChannel(
       NotificationChannels.hydration,
-      '水分補給',
-      description: '決めた間隔で水を一口すすめる通知',
+      AppLanguage.current.hydration,
+      description: AppLanguage.current.hydrationDescription,
       importance: Importance.defaultImportance,
       playSound: true,
       enableVibration: true,
     );
     // 車で眠気を検知したときの休憩の案内。アラームが止まったあとも
     // 残るので、停めてから見て、近くの駐車場を探す入口になる。
-    const restAdvice = AndroidNotificationChannel(
+    final restAdvice = AndroidNotificationChannel(
       NotificationChannels.restAdvice,
-      '休憩の案内',
-      description: '車で眠気を検知したときに、安全な場所で休憩するようすすめる通知',
+      AppLanguage.current.restChannel,
+      description: AppLanguage.current.restChannelDescription,
       importance: Importance.high,
       playSound: false,
       enableVibration: false,
@@ -120,7 +121,9 @@ class NotificationService implements NotificationScheduler {
     if (!_ready) return;
     final details = AndroidNotificationDetails(
       channel,
-      channel == NotificationChannels.pomodoro ? 'ポモドーロ' : '水分補給',
+      channel == NotificationChannels.pomodoro
+          ? AppLanguage.current.pomodoro
+          : AppLanguage.current.hydration,
       importance: channel == NotificationChannels.pomodoro
           ? Importance.high
           : Importance.defaultImportance,
@@ -182,7 +185,7 @@ class NotificationService implements NotificationScheduler {
   AndroidNotificationDetails alarmNotificationDetails({bool test = false}) {
     return AndroidNotificationDetails(
       _channelId,
-      '居眠り・仮眠アラーム',
+      AppLanguage.current.alarmChannel,
       importance: Importance.max,
       priority: Priority.max,
       // Ongoing notifications are not bridged to Wear OS.
@@ -200,10 +203,10 @@ class NotificationService implements NotificationScheduler {
       // アプリに戻らずに止められるように。押すと通知も消える。
       actions: test
           ? const []
-          : const [
+          : [
               AndroidNotificationAction(
                 stopActionId,
-                '止める',
+                AppLanguage.current.stopAlarm,
                 showsUserInterface: false,
                 cancelNotification: true,
               ),
@@ -220,8 +223,8 @@ class NotificationService implements NotificationScheduler {
     if (await android?.areNotificationsEnabled() != true) return false;
     await _plugin.show(
       NotificationIds.watchTest,
-      '居眠りガード・時計の通知テスト',
-      '時計が振動したか確認してください。これはテストです。',
+      AppLanguage.current.watchTestTitle,
+      AppLanguage.current.watchTestBody,
       NotificationDetails(android: alarmNotificationDetails(test: true)),
     );
     return true;
@@ -237,24 +240,23 @@ class NotificationService implements NotificationScheduler {
   /// これは本人が消すまで残す——停めてから読むものだから。
   Future<void> fireRestAdvice() async {
     if (!_ready) return;
-    const details = AndroidNotificationDetails(
+    final details = AndroidNotificationDetails(
       NotificationChannels.restAdvice,
-      '休憩の案内',
+      AppLanguage.current.restChannel,
       importance: Importance.high,
       priority: Priority.high,
       playSound: false,
       enableVibration: false,
       category: AndroidNotificationCategory.recommendation,
       styleInformation: BigTextStyleInformation(
-        '眠気を検知しました。次の SA・PA、駐車場、路肩など安全な場所に停めて休んでください。'
-        'タップで開くと、近くの駐車場を地図で探せます。',
+        AppLanguage.current.restDetails,
       ),
     );
     await _plugin.show(
       NotificationIds.restAdvice,
-      '休憩しましょう',
-      '眠気を検知しました。SA・PA、駐車場、路肩など安全な場所で休んでください。',
-      const NotificationDetails(android: details),
+      AppLanguage.current.takeRest,
+      AppLanguage.current.restBody,
+      NotificationDetails(android: details),
     );
   }
 }
