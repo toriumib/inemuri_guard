@@ -39,6 +39,9 @@ class AlarmService extends ChangeNotifier {
   final AudioPlayer _previewPlayer = AudioPlayer();
   final NotificationService notifications;
   Timer? _repeatTimer;
+  int _generation = 0;
+  bool _starting = false;
+  String? _reason;
 
   AlarmService(this.notifications) {
     final alarmContext = AudioContext(
@@ -61,7 +64,7 @@ class AlarmService extends ChangeNotifier {
   }
 
   AlarmTone tone = AlarmTone.chime;
-  bool get isFiring => _repeatTimer != null;
+  bool get isFiring => _starting || _repeatTimer != null;
 
   /// アラーム中に外側のライト（フラッシュLED）も点滅させるか。
   /// 画面の白黒点滅と同じ明暗で起こす仕組みの、端末の外側ぶん。
@@ -91,15 +94,39 @@ class AlarmService extends ChangeNotifier {
     await _previewPlayer.play(AssetSource(tone.asset));
   }
 
-  Future<void> start({String reason = '居眠りの兆候を検知しました'}) async {
+  Future<void> warn() async {
     if (isFiring) return;
+    await preview();
+    if (await Vibration.hasVibrator() == true && !isFiring) {
+      await Vibration.vibrate(duration: 300);
+    }
+  }
+
+  Future<void> start({String reason = '居眠りの兆候を検知しました'}) async {
+    if (isFiring) {
+      if (_reason != reason) {
+        _reason = reason;
+        unawaited(
+          notifications.fireAlarm('起きてください', reason).catchError((_) {}),
+        );
+      }
+      return;
+    }
+    final generation = ++_generation;
+    _starting = true;
+    _reason = reason;
     // 通知を最初に投げる。音声の初期化は環境によって止まることがあり
     // （エミュレータやフォーカス争奪で await が返らないのを確認済み）、
     // 時計への転送だけは音の成否に引きずられないようにする。
-    await notifications.fireAlarm('起きてください', reason);
-    unawaited(_burst().catchError((_) {}));
-    _repeatTimer = Timer.periodic(tone.gap, (_) => _burst());
-    _startVibration();
+    unawaited(notifications.fireAlarm('起きてください', reason).catchError((_) {}));
+    if (generation != _generation) return;
+    _starting = false;
+    unawaited(_burst(generation).catchError((_) {}));
+    _repeatTimer = Timer.periodic(
+      tone.gap,
+      (_) => unawaited(_burst(generation).catchError((_) {})),
+    );
+    unawaited(_startVibration(generation).catchError((_) {}));
     if (useTorch) unawaited(Torch.strobe());
     unawaited(AlarmKeys.watch((why) => onDismissRequested?.call(why)));
     if (useVoice && !(micBusy?.call() ?? false)) {
@@ -110,6 +137,9 @@ class AlarmService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    ++_generation;
+    _starting = false;
+    _reason = null;
     _repeatTimer?.cancel();
     _repeatTimer = null;
     await _loopPlayer.stop();
@@ -121,14 +151,16 @@ class AlarmService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _burst() async {
+  Future<void> _burst(int generation) async {
+    if (generation != _generation) return;
     await _loopPlayer.stop();
+    if (generation != _generation) return;
     await _loopPlayer.play(AssetSource(tone.asset));
   }
 
-  Future<void> _startVibration() async {
+  Future<void> _startVibration(int generation) async {
     final has = await Vibration.hasVibrator();
-    if (has != true) return;
+    if (has != true || generation != _generation) return;
     // Long-short-short pattern, repeating from index 0 until cancelled.
     Vibration.vibrate(pattern: const [0, 500, 200, 250, 200, 250], repeat: 0);
   }

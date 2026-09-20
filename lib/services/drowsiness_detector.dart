@@ -8,10 +8,12 @@ import 'package:flutter/foundation.dart'
         TargetPlatform,
         visibleForTesting,
         WriteBuffer;
-import 'package:flutter/widgets.dart' show AppLifecycleState, Size, WidgetsBinding;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, Size, WidgetsBinding;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'native_eye.dart';
 import 'screen_wake.dart';
+import 'face_target.dart';
 
 enum DetectorState { idle, starting, watching, denied, alarming }
 
@@ -52,7 +54,58 @@ class DrowsinessDetector extends ChangeNotifier {
   Duration closedFor = Duration.zero;
   Duration closedThreshold = const Duration(seconds: 5);
   double openThreshold = 0.35;
-  bool alarmFiring = false;
+  bool _eyeAlarm = false;
+  bool _postureAlarm = false;
+  bool get eyeAlarm => _eyeAlarm;
+  bool get postureAlarm => _postureAlarm;
+  bool get alarmFiring => _eyeAlarm || _postureAlarm;
+  final FaceTarget faceTarget = FaceTarget();
+  Timer? _healthTimer;
+  DateTime? _lastInputAt;
+  DateTime? _lastEyesAt;
+  DateTime? _lastPoseAt;
+  bool inputStalled = false;
+  bool get eyesAvailable =>
+      _seenOpenAt != null &&
+      !eyesUnreadable &&
+      _lastEyesAt != null &&
+      clock().difference(_lastEyesAt!) <= const Duration(seconds: 2);
+  bool get poseAvailable =>
+      _lastPoseAt != null &&
+      clock().difference(_lastPoseAt!) <= const Duration(seconds: 2);
+  String get monitoringLabel {
+    if (state == DetectorState.denied) return 'カメラを使用できません';
+    if (state == DetectorState.starting) return 'カメラを起動中';
+    if (state != DetectorState.watching) return '監視停止中';
+    if (inputStalled || cameraPausedInBackground) return 'カメラ入力が停止しています';
+    if (noFaceSeen) return '対象の顔が見えません';
+    if (!eyesAvailable) return poseAvailable ? '姿勢のみ監視中（目を読めません）' : '顔・目を確認中';
+    return poseAvailable ? '目と姿勢を監視中' : '目を監視中';
+  }
+
+  void noteInput() {
+    final now = clock();
+    if (_lastInputAt != null &&
+        now.difference(_lastInputAt!) > const Duration(seconds: 2)) {
+      noteFaceLost();
+    }
+    _lastInputAt = now;
+    inputStalled = false;
+    cameraPausedInBackground = false;
+    backgroundFailure = null;
+  }
+
+  @visibleForTesting
+  void checkInputHealth() {
+    if (state != DetectorState.watching || _lastInputAt == null) return;
+    if (clock().difference(_lastInputAt!) > const Duration(seconds: 3) &&
+        !inputStalled) {
+      inputStalled = true;
+      noteFaceLost();
+      _notify(force: true);
+    }
+  }
+
   bool noFaceSeen = false;
 
   /// 背面に回っていてカメラが取り上げられている状態。
@@ -103,7 +156,11 @@ class DrowsinessDetector extends ChangeNotifier {
 
   /// いま鳴っている理由。'eyes'（目）か 'posture'（姿勢）。止め方が違う——
   /// 目なら目を開ける、姿勢なら姿勢を戻す。
-  String? alarmCause;
+  String? get alarmCause => _eyeAlarm
+      ? 'eyes'
+      : _postureAlarm
+      ? 'posture'
+      : null;
   DateTime? _postureOkSince;
 
   /// 直近のフレームの明るさ（0〜255、Y 成分の平均）。前面カメラの経路だけ。
@@ -131,7 +188,8 @@ class DrowsinessDetector extends ChangeNotifier {
   final List<_TimedSample> _perclosWindow = [];
   static const _perclosWindowSeconds = 60;
   static const _perclosCloseThreshold = 0.2; // "mostly closed" cutoff
-  static const _perclosAlarmRatio = 0.15; // validated in PERCLOS literature
+  static const _perclosAlarmRatio =
+      0.15; // Product heuristic; requires device validation.
   static const _perclosMinSamples = 30;
 
   /// PERCLOS が鳴らしてよくなるまでに必要な、**実際に経過した時間**。
@@ -144,6 +202,7 @@ class DrowsinessDetector extends ChangeNotifier {
   /// 「直近5秒のうち何割か」ではない。1分ぶん貯まるまでは判断しない。
   static const _perclosWarmUp = Duration(seconds: _perclosWindowSeconds);
   double perclos = 0;
+  DateTime? _perclosStartedAt;
 
   /// アラーム中、目が開いたと認めるまでの時間。
   ///
@@ -186,6 +245,11 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> start() async {
+    if (state == DetectorState.starting || state == DetectorState.watching) {
+      return;
+    }
+    faceTarget.reset();
+    noFaceSeen = true;
     state = DetectorState.starting;
     notifyListeners();
     try {
@@ -208,10 +272,12 @@ class DrowsinessDetector extends ChangeNotifier {
       await controller.initialize();
       _controller = controller;
       _eyesClosedSince = null;
-      alarmFiring = false;
+      _eyeAlarm = false;
+      _postureAlarm = false;
       history.clear();
       _smoothingWindow.clear();
       _perclosWindow.clear();
+      _perclosStartedAt = null;
       perclos = 0;
       await controller.startImageStream(_onFrame);
       // Without this the screen sleeps a minute after the last touch, Android
@@ -237,19 +303,34 @@ class DrowsinessDetector extends ChangeNotifier {
           notifyListeners();
         },
         onReading: (face, l, r) {
+          if (state != DetectorState.watching &&
+              state != DetectorState.starting) {
+            return;
+          }
+          noteInput();
           if (!face) {
             noteFaceLost();
             _notify();
             return;
           }
           noteFaceSeen();
-          // 読めない目（null）も「顔はあるが開いた目を見ていない」として
-          // 数える。10 秒続けばサングラス扱いになり、姿勢だけで見張る。
-          ingestEyes(l ?? 0, r ?? 0);
+          // 未取得値は閉眼ではなく、目を判定できない状態として扱う。
+          ingestEyes(l, r);
         },
-        onPose: ingestPose,
+        onPose: (p, y, r) {
+          if (state == DetectorState.watching ||
+              state == DetectorState.starting) {
+            ingestPose(p, y, r);
+          }
+        },
       );
       state = DetectorState.watching;
+      _lastInputAt = clock();
+      _healthTimer?.cancel();
+      _healthTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => checkInputHealth(),
+      );
       // 起動中（starting）にホームを押されると handleAppPaused は何もせずに
       // 返るので、前面のカメラを抱えたまま背面に入り、見張りが止まる
       // （開いてすぐ他のアプリへ、という使い方で実際に起きた）。
@@ -271,9 +352,18 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _healthTimer?.cancel();
+    _healthTimer = null;
+    _lastInputAt = _lastEyesAt = _lastPoseAt = null;
+    inputStalled = false;
+    cameraPausedInBackground = false;
+    faceTarget.reset();
+    _eyesClosedSince = _eyesOpenSince = null;
+    openFor = Duration.zero;
     await NativeEye.stop('eye');
     await ScreenWake.release(_wakeKey);
-    alarmFiring = false;
+    _eyeAlarm = false;
+    _postureAlarm = false;
     noFaceSeen = false;
     _noFaceSince = null;
     backgroundFailure = null;
@@ -292,6 +382,7 @@ class DrowsinessDetector extends ChangeNotifier {
     history.clear();
     _smoothingWindow.clear();
     _perclosWindow.clear();
+    _perclosStartedAt = null;
     perclos = 0;
     _resetPosture();
     pitch = yaw = roll = null;
@@ -299,7 +390,6 @@ class DrowsinessDetector extends ChangeNotifier {
     eyesUnreadable = false;
     _faceSince = null;
     _seenOpenAt = null;
-    alarmCause = null;
     frameLuma = null;
     notifyListeners();
   }
@@ -332,7 +422,7 @@ class DrowsinessDetector extends ChangeNotifier {
   }
 
   void setThresholdSeconds(int seconds) {
-    closedThreshold = Duration(seconds: seconds);
+    closedThreshold = Duration(seconds: seconds.clamp(3, 60));
   }
 
   /// 前面／背面の切り替え。見張っている最中なら、その場で開き直す。
@@ -404,6 +494,7 @@ class DrowsinessDetector extends ChangeNotifier {
   /// Flutter 側のカメラを畳んでから native を起こす。カメラは同時に
   /// 一つしか開けないので、順番を逆にすると native 側が開けずに失敗する。
   Future<void> _handOverToNative() async {
+    noteFaceLost();
     final controller = _controller;
     _controller = null;
     if (controller != null) {
@@ -435,6 +526,8 @@ class DrowsinessDetector extends ChangeNotifier {
   /// [start] を呼ぶとサービスの起動などをやり直してしまうので、
   /// カメラだけを張り直す。
   Future<void> _reopenFlutterCamera() async {
+    faceTarget.reset();
+    noteFaceLost();
     try {
       final cameras = await availableCameras();
       final wanted = useBackCamera
@@ -456,6 +549,8 @@ class DrowsinessDetector extends ChangeNotifier {
       _controller = controller;
       await controller.startImageStream(_onFrame);
     } catch (e) {
+      inputStalled = true;
+      cameraPausedInBackground = true;
       debugPrint('カメラを開き直せなかった: $e');
     }
     notifyListeners();
@@ -463,15 +558,16 @@ class DrowsinessDetector extends ChangeNotifier {
 
   /// Silences the current alarm and ignores closed-eye time for 3 minutes.
   void snooze() {
-    alarmFiring = false;
+    _eyeAlarm = false;
+    _postureAlarm = false;
     _eyesOpenSince = null;
     openFor = Duration.zero;
     _eyesClosedSince = null;
     closedFor = Duration.zero;
     _perclosWindow.clear();
+    _perclosStartedAt = null;
     perclos = 0;
     _resetPosture();
-    alarmCause = null;
     _suppressUntil = clock().add(const Duration(minutes: 3));
     notifyListeners();
   }
@@ -504,20 +600,48 @@ class DrowsinessDetector extends ChangeNotifier {
 
   /// カメラ2経路（Flutter 側と native 側）の**両方**がここを通る。
   /// 片方だけ直して食い違う、を防ぐための一本化。
-  void ingestEyes(double left, double right) =>
-      _ingest(combineEyes(left, right));
+  void ingestEyes(double? left, double? right) {
+    if (left == null ||
+        right == null ||
+        !left.isFinite ||
+        !right.isFinite ||
+        left < 0 ||
+        left > 1 ||
+        right < 0 ||
+        right > 1) {
+      eyesUnreadable = true;
+      _lastEyesAt = null;
+      _eyesClosedSince = _eyesOpenSince = null;
+      closedFor = openFor = Duration.zero;
+      _smoothingWindow.clear();
+      _perclosWindow.clear();
+      _perclosStartedAt = null;
+      perclos = 0;
+      _notify(force: true);
+      return;
+    }
+    _ingest(combineEyes(left, right));
+  }
 
   /// 頭の角度ひとつぶんの判定。目と同じく、カメラ2経路の両方がここを通る。
   ///
   /// [pitchDeg] 俯き／仰け反り（X）、[yawDeg] 左右の向き（Y）、[rollDeg] 横倒し（Z）。
   /// 普段の姿勢からのずれで見るので、カメラの置き方には依らない。
   void ingestPose(double pitchDeg, double yawDeg, double rollDeg) {
+    if (!pitchDeg.isFinite || !yawDeg.isFinite || !rollDeg.isFinite) return;
+    final poseNow = clock();
+    if (_lastPoseAt != null &&
+        poseNow.difference(_lastPoseAt!) > const Duration(seconds: 2)) {
+      _resetPosture();
+    }
+    _lastPoseAt = poseNow;
     pitch = pitchDeg;
     yaw = yawDeg;
     roll = rollDeg;
     final now = clock();
     final suppressed = _suppressUntil != null && now.isBefore(_suppressUntil!);
     final wasAlarming = alarmFiring;
+    final hadPostureAlarm = _postureAlarm;
 
     // 基準。最初の値で置き、ずれが小さい間だけゆっくり寄せる（1/50）。
     // 落ちている最中に追従させると、落ちた姿勢が「普段」になってしまう。
@@ -527,7 +651,9 @@ class DrowsinessDetector extends ChangeNotifier {
     final dPitch = (pitchDeg - _pitchBase!).abs();
     final dRoll = (rollDeg - _rollBase!).abs();
     final dYaw = (yawDeg - _yawBase!).abs();
-    if (dPitch < postureDeg / 2) _pitchBase = _pitchBase! * 0.98 + pitchDeg * 0.02;
+    if (dPitch < postureDeg / 2) {
+      _pitchBase = _pitchBase! * 0.98 + pitchDeg * 0.02;
+    }
     if (dRoll < postureDeg / 2) _rollBase = _rollBase! * 0.98 + rollDeg * 0.02;
     if (dYaw < lookAwayDeg / 2) _yawBase = _yawBase! * 0.98 + yawDeg * 0.02;
 
@@ -540,20 +666,18 @@ class DrowsinessDetector extends ChangeNotifier {
       _postureOffSince ??= now;
       postureOffFor = now.difference(_postureOffSince!);
     }
-    if (!alarmFiring && !suppressed && postureOffFor >= closedThreshold) {
-      alarmFiring = true;
-      alarmCause = 'posture';
+    if (!_postureAlarm && !suppressed && postureOffFor >= closedThreshold) {
+      _postureAlarm = true;
       _postureOkSince = null;
     }
     // 姿勢で鳴っているなら、姿勢が戻って 3 秒で止める（目と同じ長さ）。
-    if (alarmFiring && alarmCause == 'posture') {
+    if (_postureAlarm) {
       if (off) {
         _postureOkSince = null;
       } else {
         _postureOkSince ??= now;
         if (now.difference(_postureOkSince!) >= eyesOpenToStop) {
-          alarmFiring = false;
-          alarmCause = null;
+          _postureAlarm = false;
           _postureOkSince = null;
         }
       }
@@ -576,7 +700,12 @@ class DrowsinessDetector extends ChangeNotifier {
         _lastLookAwayAlertAt = now;
       }
     }
-    _notify(force: alarmFiring != wasAlarming || lookAwayAlert);
+    _notify(
+      force:
+          alarmFiring != wasAlarming ||
+          hadPostureAlarm != _postureAlarm ||
+          lookAwayAlert,
+    );
   }
 
   /// 顔を見失った。
@@ -585,33 +714,40 @@ class DrowsinessDetector extends ChangeNotifier {
   /// ここで閉眼タイマーをリセットしないと、目を閉じたまま顔が外れて戻って
   /// きたときに、外れていた時間まで閉眼として数えてしまう（Web 版は
   /// 最初からリセットしていた。Android だけ抜けていた）。
-  /// PERCLOS は実際のサンプルしか積まないので触らない。
+  /// 観測が途切れたので PERCLOS の窓も取り直す。
   /// 鳴っているアラームは止めない——顔を隠せば止まる、では困る。
   void noteFaceLost() {
+    final changed = !noFaceSeen;
     noFaceSeen = true;
+    _lastEyesAt = _lastPoseAt = null;
+    _smoothingWindow.clear();
+    _perclosWindow.clear();
+    _perclosStartedAt = null;
+    perclos = 0;
     _noFaceSince ??= clock();
     // 顔が見えないのは「開いている」ではない。開けている時間は積まない。
     _eyesOpenSince = null;
     openFor = Duration.zero;
-    if (!alarmFiring) {
-      _eyesClosedSince = null;
-      closedFor = Duration.zero;
-    }
+    _eyesClosedSince = null;
+    closedFor = Duration.zero;
     // 姿勢も同じ。見えていない間の時間は積まない。
     // 「目が読めるか」も顔が戻ってから数え直す（サングラスを掛けて戻る人）。
     _resetPosture();
     _faceSince = null;
     _seenOpenAt = null;
     eyesUnreadable = false;
+    if (changed) _notify(force: true);
   }
 
   DateTime? _noFaceSince;
 
   /// 顔が戻った。[noteFaceLost] の対。両方の経路がここを通る。
   void noteFaceSeen() {
+    final changed = noFaceSeen;
     noFaceSeen = false;
     _noFaceSince = null;
     _faceSince ??= clock();
+    if (changed) _notify(force: true);
   }
 
   /// 顔を3秒以上見失っている。よくある原因（眼鏡の反射・マスク・暗さ）を
@@ -621,6 +757,17 @@ class DrowsinessDetector extends ChangeNotifier {
       clock().difference(_noFaceSince!) >= const Duration(seconds: 3);
 
   void _ingest(double raw) {
+    final sampleNow = clock();
+    if (_lastEyesAt != null &&
+        sampleNow.difference(_lastEyesAt!) > const Duration(seconds: 2)) {
+      _eyesClosedSince = _eyesOpenSince = null;
+      closedFor = openFor = Duration.zero;
+      _smoothingWindow.clear();
+      _perclosWindow.clear();
+      _perclosStartedAt = null;
+    }
+    _lastEyesAt = sampleNow;
+    eyesUnreadable = false;
     // 顔が現れてから一度でも「開いている」を見たか。見ていない目の
     // 「閉」は信じない（サングラス・濃い眼鏡・小さすぎる顔）。
     if (raw > seenOpenAbove) {
@@ -643,6 +790,7 @@ class DrowsinessDetector extends ChangeNotifier {
     final now = clock();
     final suppressed = _suppressUntil != null && now.isBefore(_suppressUntil!);
     final wasAlarming = alarmFiring;
+    final hadEyeAlarm = _eyeAlarm;
 
     if (suppressed) {
       _eyesClosedSince = null;
@@ -661,64 +809,62 @@ class DrowsinessDetector extends ChangeNotifier {
     } else {
       _eyesClosedSince = null;
       closedFor = Duration.zero;
-      if (alarmFiring) {
+      if (_eyeAlarm) {
         _eyesOpenSince ??= now;
         openFor = now.difference(_eyesOpenSince!);
         if (openFor >= eyesOpenToStop) {
-          alarmFiring = false;
-          alarmCause = null;
+          _eyeAlarm = false;
           _eyesOpenSince = null;
           openFor = Duration.zero;
         }
       }
     }
 
-    if (suppressed) {
+    if (suppressed || _seenOpenAt == null || _eyeAlarm) {
       _perclosWindow.clear();
+      _perclosStartedAt = null;
       perclos = 0;
     } else {
+      _perclosStartedAt ??= now;
       _perclosWindow.add(_TimedSample(now, eyeOpenness));
-      final cutoff = now.subtract(
-        const Duration(seconds: _perclosWindowSeconds),
-      );
-      _perclosWindow.removeWhere((s) => s.time.isBefore(cutoff));
-      if (_perclosWindow.length >= _perclosMinSamples) {
-        final closedCount = _perclosWindow
-            .where((s) => s.openness < _perclosCloseThreshold)
-            .length;
-        perclos = closedCount / _perclosWindow.length;
-      } else {
-        perclos = 0;
+      final cutoff = now.subtract(_perclosWarmUp);
+      // Keep the interval straddling the boundary; weight by elapsed time,
+      // not by frame count. Missing input resets the window above.
+      while (_perclosWindow.length > 1 &&
+          !_perclosWindow[1].time.isAfter(cutoff)) {
+        _perclosWindow.removeAt(0);
       }
+      var validUs = 0;
+      var closedUs = 0;
+      for (var i = 0; i + 1 < _perclosWindow.length; i++) {
+        final sample = _perclosWindow[i];
+        final begin = sample.time.isBefore(cutoff) ? cutoff : sample.time;
+        final us = _perclosWindow[i + 1].time.difference(begin).inMicroseconds;
+        if (us <= 0) continue;
+        validUs += us;
+        if (sample.openness < _perclosCloseThreshold) closedUs += us;
+      }
+      perclos = validUs == 0 ? 0 : closedUs / validUs;
     }
-
-    // 1分ぶん貯まったか。貯まるまでの割合はまだ意味を持たない。
-    final span = _perclosWindow.isEmpty
-        ? Duration.zero
-        : now.difference(_perclosWindow.first.time);
     final perclosReady =
-        span >= _perclosWarmUp && _perclosWindow.length >= _perclosMinSamples;
-
-    if (!alarmFiring) {
-      final byClosure = closedFor >= closedThreshold;
-      final byPerclos =
-          !suppressed && perclosReady && perclos >= _perclosAlarmRatio;
-      if (byClosure || byPerclos) {
-        alarmFiring = true;
-        alarmCause = 'eyes';
+        _perclosStartedAt != null &&
+        now.difference(_perclosStartedAt!) >= _perclosWarmUp &&
+        _perclosWindow.length >= _perclosMinSamples;
+    if (!_eyeAlarm && !suppressed) {
+      final byPerclos = perclosReady && perclos >= _perclosAlarmRatio;
+      if (closedFor >= closedThreshold || byPerclos) {
+        _eyeAlarm = true;
         _eyesOpenSince = null;
         openFor = Duration.zero;
         if (byPerclos) {
-          // 一度 PERCLOS で鳴らしたら、その1分ぶんは使い切ったものとして
-          // 捨てる。残したままだと、目を開けて止まった直後にまだ高いままの
-          // 割合でもう一度鳴り、鳴りっぱなしに見える。
           _perclosWindow.clear();
+          _perclosStartedAt = null;
           perclos = 0;
         }
       }
     }
     // 背面では UI が居ないので、鳴らす判断の変化だけは必ず通す。
-    _notify(force: alarmFiring != wasAlarming);
+    _notify(force: alarmFiring != wasAlarming || hadEyeAlarm != _eyeAlarm);
   }
 
   /// Y 成分（明るさ）の平均。64 画素ごとに拾うだけなので安い。
@@ -742,23 +888,24 @@ class DrowsinessDetector extends ChangeNotifier {
     if (now.difference(_lastFrameAt) < _minFrameGap) return;
     _lastFrameAt = now;
     _busy = true;
+    final frameController = _controller;
     try {
       final inputImage = _toInputImage(image, _controller!.description);
       if (inputImage == null) return;
       frameLuma = _meanLuma(image);
       final faces = await _faceDetector.processImage(inputImage);
+      if (_controller != frameController) return;
+      noteInput();
+      final selected = faceTarget.select(faces);
       final wasAlarming = alarmFiring;
       final hadFace = !noFaceSeen;
-      if (faces.isEmpty) {
+      if (selected == null) {
         noteFaceLost();
       } else {
         noteFaceSeen();
-        final face = faces.first;
+        final face = selected;
         // 読めない目（null）も数える。native 経路と同じ扱い。
-        ingestEyes(
-          face.leftEyeOpenProbability ?? 0,
-          face.rightEyeOpenProbability ?? 0,
-        );
+        ingestEyes(face.leftEyeOpenProbability, face.rightEyeOpenProbability);
         final px = face.headEulerAngleX, py = face.headEulerAngleY;
         final pz = face.headEulerAngleZ;
         if (px != null && py != null && pz != null) ingestPose(px, py, pz);
@@ -811,6 +958,7 @@ class DrowsinessDetector extends ChangeNotifier {
 
   @override
   Future<void> dispose() async {
+    _healthTimer?.cancel();
     await _faceDetector.close();
     await _controller?.dispose();
     super.dispose();

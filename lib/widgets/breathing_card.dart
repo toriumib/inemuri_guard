@@ -107,7 +107,9 @@ class _BreathingCardState extends State<BreathingCard> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: breathing.state == MicState.listening
+                    onPressed:
+                        breathing.state == MicState.listening ||
+                            breathing.state == MicState.starting
                         ? null
                         : () async {
                             breathing.setThresholdSeconds(thresholdSeconds);
@@ -137,6 +139,10 @@ class _BreathingCardState extends State<BreathingCard> {
                 ),
               ],
             ),
+            if (breathing.failure != null) ...[
+              const SizedBox(height: 12),
+              Text(breathing.failure!, style: TextStyle(color: c.accentAlert)),
+            ],
             if (breathing.state == MicState.denied) ...[
               const SizedBox(height: 12),
               Text(
@@ -152,7 +158,6 @@ class _BreathingCardState extends State<BreathingCard> {
     );
   }
 }
-
 
 /// Big, tappable seconds picker shared by both sensor cards — replaces the
 /// old dropdown, which was too small/fiddly to hit reliably.
@@ -213,4 +218,3 @@ class _ChipThresholdPicker extends StatelessWidget {
     );
   }
 }
-

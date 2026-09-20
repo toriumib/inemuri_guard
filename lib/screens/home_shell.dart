@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../services/ad_service.dart';
 import '../services/alarm_service.dart';
+import '../services/alert_coordinator.dart';
 import '../services/breathing_detector.dart';
 import '../services/car_trigger.dart';
 import '../services/drowsiness_detector.dart';
@@ -80,15 +81,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     context.read<NudgeService>().load(
       onNudge: (app) {
         if (!mounted) return;
-        context.read<AlarmService>().start(reason: '$app の通知が届きました');
+        context.read<AlertCoordinator>().requestNudge(app);
       },
     );
     // アプリの外から止める道（音量キー・ホーム／履歴キー・通知の「止める」）。
     // 別のアプリを前に出したまま鳴ったとき、戻ってこなくても消せる。
     context.read<AlarmService>().onDismissRequested = _dismissFromOutside;
     // 声で止める。寝息検知がマイクを使っている間は開かない。
-    context.read<AlarmService>().useVoice =
-        context.read<StatsService>().voiceStop;
+    context.read<AlarmService>().useVoice = context
+        .read<StatsService>()
+        .voiceStop;
     context.read<AlarmService>().micBusy = () =>
         context.read<BreathingDetector>().state == MicState.listening;
     context.read<NotificationService>().onStopRequested = () =>
@@ -100,7 +102,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted) return;
       final detector = context.read<DrowsinessDetector>();
       if (detector.state == DetectorState.idle) {
-        detector.setThresholdSeconds(context.read<StatsService>().eyeThresholdSeconds);
+        detector.setThresholdSeconds(
+          context.read<StatsService>().eyeThresholdSeconds,
+        );
         detector.start();
       }
     };
@@ -109,7 +113,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final detector = context.read<DrowsinessDetector>();
       if (detector.state != DetectorState.idle) {
         detector.stop();
-        context.read<AlarmService>().stop();
       }
     };
     final stats = context.read<StatsService>();
@@ -143,42 +146,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// 画面の「起きた！」／スヌーズ。目のアラームは 3 分のスヌーズ、
   /// 仮眠は 3 分後にもう一度。
   void _wakeUp() {
-    debugPrint('alarm dismissed: wake button');
-    final alarm = context.read<AlarmService>();
-    final detector = context.read<DrowsinessDetector>();
-    final breathing = context.read<BreathingDetector>();
-    final nap = context.read<NapTimerService>();
-    final stats = context.read<StatsService>();
-    alarm.stop();
-    if (detector.alarmFiring) {
-      detector.snooze();
-      stats.bumpAlarm('スヌーズ 3分');
-    } else if (breathing.alarmFiring) {
-      breathing.snooze();
-      stats.bumpAlarm('スヌーズ 3分');
-    } else {
-      nap.snooze();
-    }
+    context.read<AlertCoordinator>().dismiss(snoozeNap: true);
   }
 
-  /// 外から「止めたい」が来た。押せている＝起きているので、鳴っている
-  /// ものを全部畳む。目のアラームは「目を開けるまで止まらない」が原則
-  /// だが、別のアプリを操作しているなら開いている——3分のスヌーズにする。
   void _dismissFromOutside(String why) {
     if (!mounted) return;
-    debugPrint('alarm dismissed from outside: $why');
-    final alarm = context.read<AlarmService>();
-    final detector = context.read<DrowsinessDetector>();
-    final breathing = context.read<BreathingDetector>();
-    final nap = context.read<NapTimerService>();
-    final stats = context.read<StatsService>();
-    alarm.stop();
-    if (detector.alarmFiring) {
-      detector.snooze();
-      stats.bumpAlarm('外から止めた（スヌーズ 3分）');
-    }
-    if (breathing.alarmFiring) breathing.snooze();
-    if (nap.phase == NapPhase.done) nap.cancel();
+    context.read<AlertCoordinator>().dismiss();
   }
 
   @override
@@ -188,7 +161,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final breathing = context.watch<BreathingDetector>();
     final nap = context.watch<NapTimerService>();
     final pomo = context.watch<PomodoroService>();
-    final alarm = context.watch<AlarmService>();
+    final alerts = context.watch<AlertCoordinator>();
     final stats = context.watch<StatsService>();
     final log = context.watch<SleepLogService>();
 
@@ -200,12 +173,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) => banner?.dispose());
     }
 
-    final anyAlarming =
-        detector.alarmFiring ||
-        breathing.alarmFiring ||
-        nap.phase == NapPhase.done;
+    final anyAlarming = alerts.isAlarming;
     final canDismiss =
-        anyAlarming && !(detector.alarmFiring && !detector.faceLostLong);
+        anyAlarming &&
+        !(detector.alarmFiring &&
+            !detector.faceLostLong &&
+            !detector.inputStalled);
 
     final (mode, label, value) = _status(
       detector,
@@ -239,8 +212,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                         : () async {
                             if (detector.state == DetectorState.watching) {
                               await detector.stop();
-                              if (!breathing.alarmFiring) await alarm.stop();
                             } else {
+                              detector.setThresholdSeconds(
+                                stats.eyeThresholdSeconds,
+                              );
                               await detector.start();
                             }
                           },
@@ -263,7 +238,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
           // 暗くて顔が消えたときだけ。鳴っている間は点滅のほうを出す。
           IlluminateOverlay(
-            active: !anyAlarming &&
+            active:
+                !anyAlarming &&
                 stats.illuminateInDark &&
                 detector.state == DetectorState.watching &&
                 detector.faceLostLong &&
@@ -333,6 +309,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     PomodoroService pomo,
     bool anyAlarming,
   ) {
+    if (anyAlarming &&
+        !detector.alarmFiring &&
+        !breathing.alarmFiring &&
+        nap.phase != NapPhase.done) {
+      return (
+        StatusMode.alert,
+        '通知',
+        context.read<AlertCoordinator>().reason ?? '通知が届きました',
+      );
+    }
     if (anyAlarming) {
       // 目のアラームは「目を開けるまで止まらない」。残り秒数を出して、
       // 何をすれば止まるのかを画面で言う。
@@ -354,6 +340,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (nap.phase == NapPhase.running) {
       return (StatusMode.warn, '仮眠タイマー', '${nap.minutes}分仮眠中');
     }
+    if (detector.state == DetectorState.watching &&
+        (detector.inputStalled ||
+            detector.noFaceSeen ||
+            !detector.eyesAvailable)) {
+      return (StatusMode.warn, '監視状態', detector.monitoringLabel);
+    }
+    if (breathing.state == MicState.failed) {
+      return (StatusMode.warn, 'マイク入力停止', 'マイク検知を再開してください');
+    }
     if (detector.cameraPausedInBackground &&
         detector.state == DetectorState.watching) {
       // 背面ではカメラが取り上げられている。復帰した瞬間にこの表示が
@@ -374,7 +369,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return (
         ratio > 0.5 ? StatusMode.warn : StatusMode.watching,
         '居眠り検知',
-        ratio > 0.5 ? '眠気の兆候あり' : '検知開始中',
+        ratio > 0.5
+            ? '眠気の兆候あり'
+            : detector.state == DetectorState.watching
+            ? detector.monitoringLabel
+            : 'マイクを監視中',
       );
     }
     if (pomo.isRunning || pomo.isPaused) {

@@ -1,20 +1,16 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:vibration/vibration.dart';
 
 import '../services/alarm_service.dart';
-import '../services/breathing_detector.dart';
 import '../services/drowsiness_detector.dart';
-import '../services/notification_service.dart';
-import '../services/sleep_log_service.dart';
+import '../services/alert_coordinator.dart';
 import '../services/stats_service.dart';
 import '../services/torch.dart';
 import '../theme/app_theme.dart';
 import '../widgets/camera_stage.dart';
-import '../widgets/range_slider_row.dart';
+import '../widgets/sensitivity_control.dart';
+import '../widgets/monitoring_status.dart';
 
 class DetectScreen extends StatefulWidget {
   const DetectScreen({super.key});
@@ -24,30 +20,18 @@ class DetectScreen extends StatefulWidget {
 }
 
 class _DetectScreenState extends State<DetectScreen> {
-  bool _wasEyeAlarming = false;
-  bool _wasBreathAlarming = false;
-  bool _wasLookingAway = false;
-
-  /// 車で眠気を検知したあと、「安全な場所で休憩」の案内を出しているか。
-  /// 閉じるまで残す——鳴っている最中ではなく、停めてから読むものだから。
-  bool _restAdvice = false;
   late final DrowsinessDetector _detector;
-  late final BreathingDetector _breathing;
 
   @override
   void initState() {
     super.initState();
     _detector = context.read<DrowsinessDetector>();
-    _breathing = context.read<BreathingDetector>();
-    _detector.addListener(_sensorChanged);
-    _breathing.addListener(_sensorChanged);
     // 保存した「使う場所」を、カメラの向き・車の機能・ライトへ配る。
     // 起動時にここを通らないと、背面カメラの設定が次の起動で効かない
     // （1.3.0 までそうなっていた）。
     _applyPlacement(context.read<StatsService>());
     // 前面ではカメラを持っている側（Flutter）しかライトを点せない。
     Torch.viaController = _detector.setTorch;
-    _sensorChanged();
   }
 
   /// 保存した設定を、検知器と鳴らし側へ配る。使う場所（机／車）は検知画面、
@@ -82,81 +66,11 @@ class _DetectScreenState extends State<DetectScreen> {
     }
   }
 
-  void _sensorChanged() {
-    // Microtasks run even when Android stops scheduling UI frames.
-    // Read the latest state so stopping detection cancels a queued alarm.
-    scheduleMicrotask(() {
-      if (mounted) _syncAlarms();
-    });
-  }
-
-  @override
-  void dispose() {
-    _detector.removeListener(_sensorChanged);
-    _breathing.removeListener(_sensorChanged);
-    super.dispose();
-  }
-
-  void _syncAlarms() {
-    final detector = _detector;
-    final breathing = _breathing;
-    final alarm = context.read<AlarmService>();
-    final stats = context.read<StatsService>();
-    final sleepLog = context.read<SleepLogService>();
-
-    // React once per episode without depending on a widget rebuild.
-    if (detector.alarmFiring != _wasEyeAlarming) {
-      final firing = detector.alarmFiring;
-      _wasEyeAlarming = firing;
-      if (firing) {
-        final car = stats.carMode;
-        alarm.start(
-          reason: car
-              ? '目を閉じたままの状態を検知しました。安全な場所で休憩しましょう'
-              : '目を閉じたままの状態を検知しました',
-        );
-        stats.bumpAlarm('目を閉じたままの状態を検知');
-        sleepLog.add(SleepEventType.detected, note: '目の開閉');
-        if (car) {
-          // 車では「起こす」で終わらせない。SA・路肩・駐車場で休む、まで言う。
-          // 画面を見ていない（マップを前に出している・裏向きに置いている）
-          // ときのために通知でも残す。
-          setState(() => _restAdvice = true);
-          if (WidgetsBinding.instance.lifecycleState !=
-              AppLifecycleState.resumed) {
-            context.read<NotificationService>().fireRestAdvice();
-          }
-        }
-      } else if (!breathing.alarmFiring) {
-        alarm.stop();
-      }
-    }
-    // 脇見（車モード）。アラームではなく一段弱い知らせ——短い音と振動だけ。
-    if (detector.lookAwayAlert && !_wasLookingAway) {
-      alarm.preview();
-      Vibration.hasVibrator().then((has) {
-        if (has == true) Vibration.vibrate(duration: 300);
-      });
-    }
-    _wasLookingAway = detector.lookAwayAlert;
-    if (breathing.alarmFiring != _wasBreathAlarming) {
-      final firing = breathing.alarmFiring;
-      _wasBreathAlarming = firing;
-      if (firing) {
-        alarm.start(reason: '規則的な寝息のような音を検知しました');
-        stats.bumpAlarm('寝息のような音を検知');
-        sleepLog.add(SleepEventType.detected, note: '寝息');
-      } else if (!detector.alarmFiring) {
-        alarm.stop();
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final detector = context.watch<DrowsinessDetector>();
-    final breathing = context.watch<BreathingDetector>();
+    final alerts = context.watch<AlertCoordinator>();
     final alarm = context.read<AlarmService>();
     final stats = context.watch<StatsService>();
 
@@ -165,8 +79,8 @@ class _DetectScreenState extends State<DetectScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_restAdvice) ...[
-            _RestAdviceCard(onClose: () => setState(() => _restAdvice = false)),
+          if (alerts.restAdvice) ...[
+            _RestAdviceCard(onClose: alerts.dismissRestAdvice),
             const SizedBox(height: 16),
           ],
           Card(
@@ -206,7 +120,6 @@ class _DetectScreenState extends State<DetectScreen> {
                             ),
                             onPressed: () async {
                               await detector.stop();
-                              if (!breathing.alarmFiring) await alarm.stop();
                             },
                             child: const Text('止める'),
                           )
@@ -318,15 +231,9 @@ class _DetectScreenState extends State<DetectScreen> {
                     ),
                   ],
                   const SizedBox(height: 18),
-                  RangeSliderRow(
-                    title: '何秒目を閉じたら起こす？',
-                    value: stats.eyeThresholdSeconds,
-                    color: c.accentAlert,
-                    onChanged: (v) {
-                      stats.setEyeThresholdSeconds(v);
-                      detector.setThresholdSeconds(v);
-                    },
-                  ),
+                  const MonitoringStatus(),
+                  const SizedBox(height: 14),
+                  const SensitivityControl(),
                   const SizedBox(height: 14),
                   Text('使う場所', style: Theme.of(context).textTheme.titleSmall),
                   RadioGroup<bool>(
@@ -388,7 +295,7 @@ class _DetectScreenState extends State<DetectScreen> {
                             child: Text(
                               '他のアプリを開いている間の見張りが止まりました'
                               '（${detector.backgroundFailure}）。'
-                              'この画面を開いている間は見張っています。',
+                              'カメラの入力状態を確認し、停止してから再開してください。',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),

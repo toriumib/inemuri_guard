@@ -19,7 +19,7 @@
 
 `lib/services/drowsiness_detector.dart` が2つの経路でアラームを上げる。
 
-1. **連続閉眼** — 目が閉じたまま既定10秒続いたら発火（安価な市販の居眠り防止メガネと同じ考え方）
+1. **連続閉眼** — 目が閉じたまま既定5秒続いたら発火（安価な市販の居眠り防止メガネと同じ考え方）
 2. **PERCLOS** — 直近60秒のうち目が閉じていた割合が15%以上。完全には閉じきらない
    「重いまばたき」の蓄積を捉える指標で、自動車グレードの眠気検知で使われている
 
@@ -97,3 +97,29 @@ adb -s <device-id> install -r build/app/outputs/flutter-apk/app-debug.apk
 
 `tools/gen_tones.py` — アラーム音3種（chime / siren / bell）の WAV を生成する。
 音を変えたいときはこれを編集して `python tools/gen_tones.py` を実行。
+
+
+## 2026-09-20 検知・警告の改善（1.6.0）
+
+- 警告管理を `AlertCoordinator` に集約。閉眼→姿勢→呼吸音→仮眠→通知の順に優先し、原因別に解除する。画面が再描画されなくても動作する。
+- PERCLOS はフレーム数ではなく観測時間で集計。60秒経過を独立管理し、入力欠落時は窓を取り直す。警告中は再蓄積しない。
+- 目の値が未取得・不正なら閉眼に変換せず、目を判定できない状態として表示する。
+- カメラ・マイクの入力が3秒以上途絶えたら停止状態を表示する。入力停止だけで既存の警告を解除しない。
+- 監視対象は一人で開始したときの追跡IDに固定。別人へ自動切替しない。見失ってIDが変わった場合は監視を停止して再開する。前面・背面のカメラ切替時には再取得する。
+- 感度「標準（5秒）」「敏感（3秒）」「詳細設定（3〜60秒）」を保存。変更対象は連続閉眼・姿勢の継続時間のみ。検証済みの医療的な感度を意味しない。
+- 呼吸音の警告は操作で解除する。アラーム自身の音で自動解除しない。
+- 自動テスト: 不規則なフレーム間隔、複数原因の独立解除、対象固定、入力欠落、画面の状態遷移、感度の保存。
+- 実機で確認する項目: 眼鏡・暗所・複数人、画面消灯と復帰、他アプリのカメラ使用、マイク権限取消、Bluetoothの音声出力。自動テストは実測の検知精度を保証しない。
+
+### Detection and alert changes (1.6.0)
+
+Alerts now have a single coordinator, with independent lifetimes for eye closure,
+posture, breathing-like sounds, nap completion, and notifications. PERCLOS uses
+elapsed observation time rather than frame counts. Missing eye measurements are
+unknown, not closed; input stalls are displayed and never count as recovery.
+Both camera paths lock onto a single tracking ID and require restarting monitoring
+if that ID is lost. Sensitivity presets persist the consecutive closure/posture
+duration (standard: 5 seconds; sensitive: 3 seconds; custom: 3–60 seconds).
+Breathing alerts stay active until dismissed so the alarm cannot cancel itself.
+Device testing is still required for lighting, glasses, camera handover, permissions,
+and actual audio output; these are product heuristics, not validated diagnostic thresholds.

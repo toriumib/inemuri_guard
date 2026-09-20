@@ -63,3 +63,6 @@ android/key.properties
 /screenshots/
 /store_assets/promo_detection/raw/
 /store_assets/promo_detection/*.y4m
+
+# Kotlin compiler session cache
+/android/.kotlin/

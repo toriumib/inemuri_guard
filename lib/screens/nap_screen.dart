@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/alarm_service.dart';
 import '../services/nap_timer_service.dart';
 import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
@@ -34,14 +33,12 @@ class _NapScreenState extends State<NapScreen> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final nap = context.watch<NapTimerService>();
-    final alarm = context.read<AlarmService>();
     final stats = context.read<StatsService>();
     final sleepLog = context.read<SleepLogService>();
 
     if (nap.phase == NapPhase.done && _prevPhase != NapPhase.done) {
       final minutes = nap.minutes;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        alarm.start();
         final crossedLine = await stats.bumpNap(minutes);
         await sleepLog.add(SleepEventType.nap, note: '$minutes分');
         if (context.mounted) {
@@ -56,8 +53,6 @@ class _NapScreenState extends State<NapScreen> {
           await SupportService.requestInAppReview();
         }
       });
-    } else if (nap.phase != NapPhase.done && _prevPhase == NapPhase.done) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => alarm.stop());
     }
     _prevPhase = nap.phase;
 
@@ -153,7 +148,6 @@ class _NapScreenState extends State<NapScreen> {
                           onPressed: nap.phase == NapPhase.running
                               ? null
                               : () {
-                                  alarm.stop();
                                   nap.start();
                                 },
                           child: const Text('仮眠を開始'),
@@ -172,7 +166,6 @@ class _NapScreenState extends State<NapScreen> {
                               nap.phase == NapPhase.running ||
                                   nap.phase == NapPhase.done
                               ? () {
-                                  alarm.stop();
                                   nap.cancel();
                                 }
                               : null,

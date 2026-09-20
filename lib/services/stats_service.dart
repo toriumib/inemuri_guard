@@ -16,7 +16,21 @@ class LogEntry {
 
 /// Tracks today's nap/alarm counts and a short rolling event log.
 /// Counts reset automatically when the calendar day changes.
+enum DetectionSensitivity { standard, sensitive, custom }
+
 class StatsService extends ChangeNotifier {
+  DetectionSensitivity sensitivity = DetectionSensitivity.standard;
+  Future<void> setSensitivity(DetectionSensitivity value) async {
+    sensitivity = value;
+    if (value != DetectionSensitivity.custom) {
+      eyeThresholdSeconds = value == DetectionSensitivity.standard ? 5 : 3;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('detection_sensitivity', value.name);
+    await prefs.setInt(_kEyeThresholdSeconds, eyeThresholdSeconds);
+    notifyListeners();
+  }
+
   static const _kDate = 'stats_date';
   static const _kNaps = 'stats_naps';
   static const _kNapMinutes = 'stats_nap_minutes';
@@ -109,7 +123,17 @@ class StatsService extends ChangeNotifier {
     premium = prefs.getBool(_kPremium) ?? false;
     showCameraPreview = prefs.getBool(_kShowCameraPreview) ?? true;
     useBackCamera = prefs.getBool(_kUseBackCamera) ?? false;
-    eyeThresholdSeconds = prefs.getInt(_kEyeThresholdSeconds) ?? 5;
+    eyeThresholdSeconds = (prefs.getInt(_kEyeThresholdSeconds) ?? 5).clamp(
+      3,
+      60,
+    );
+    final savedSensitivity = prefs.getString('detection_sensitivity');
+    sensitivity = DetectionSensitivity.values.firstWhere(
+      (v) => v.name == savedSensitivity,
+      orElse: () => eyeThresholdSeconds == 5
+          ? DetectionSensitivity.standard
+          : DetectionSensitivity.custom,
+    );
     autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
@@ -205,9 +229,11 @@ class StatsService extends ChangeNotifier {
   }
 
   Future<void> setEyeThresholdSeconds(int value) async {
-    eyeThresholdSeconds = value;
+    eyeThresholdSeconds = value.clamp(3, 60);
+    sensitivity = DetectionSensitivity.custom;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kEyeThresholdSeconds, value);
+    await prefs.setInt(_kEyeThresholdSeconds, eyeThresholdSeconds);
+    await prefs.setString('detection_sensitivity', sensitivity.name);
     notifyListeners();
   }
 

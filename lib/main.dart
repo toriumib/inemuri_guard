@@ -8,6 +8,7 @@ import 'screens/home_shell.dart';
 import 'screens/terms_gate.dart';
 import 'services/ad_service.dart';
 import 'services/alarm_service.dart';
+import 'services/alert_coordinator.dart';
 import 'services/breathing_detector.dart';
 import 'services/car_trigger.dart';
 import 'services/drowsiness_detector.dart';
@@ -118,6 +119,38 @@ class InemuriGuardApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DrowsinessDetector()),
         ChangeNotifierProvider(create: (_) => BreathingDetector()),
         ChangeNotifierProvider(create: (_) => NapTimerService()),
+        ChangeNotifierProvider(
+          lazy: false,
+          create: (context) => AlertCoordinator(
+            detector: context.read<DrowsinessDetector>(),
+            breathing: context.read<BreathingDetector>(),
+            nap: context.read<NapTimerService>(),
+            applyAlarm: (reason) => reason == null
+                ? context.read<AlarmService>().stop()
+                : context.read<AlarmService>().start(reason: reason),
+            onEpisode: (source) {
+              if (source == AlertSource.nap || source == AlertSource.nudge) {
+                return;
+              }
+              final text = switch (source) {
+                AlertSource.eyes => '目の開閉',
+                AlertSource.posture => '姿勢の傾き',
+                _ => '寝息のような音',
+              };
+              unawaited(stats.bumpAlarm(text));
+              unawaited(sleepLog.add(SleepEventType.detected, note: text));
+            },
+            onLookAway: () => unawaited(
+              context.read<AlarmService>().warn().catchError((_) {}),
+            ),
+            onRestAdvice: () {
+              if (WidgetsBinding.instance.lifecycleState !=
+                  AppLifecycleState.resumed) {
+                unawaited(notifications.fireRestAdvice());
+              }
+            },
+          ),
+        ),
         ChangeNotifierProxyProvider<StatsService, PurchaseService>(
           create: (_) => PurchaseService(stats)..init(),
           update: (_, stats, previous) =>
@@ -137,9 +170,7 @@ class InemuriGuardApp extends StatelessWidget {
           // 自動開始を担うので、同意→初回のカメラ許可、の順になる。
           home: stats.termsAcceptedVersion >= TermsGate.version
               ? const HomeShell()
-              : TermsGate(
-                  onAccept: () => stats.acceptTerms(TermsGate.version),
-                ),
+              : TermsGate(onAccept: () => stats.acceptTerms(TermsGate.version)),
         ),
       ),
     );

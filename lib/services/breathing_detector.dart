@@ -6,7 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'native_eye.dart';
 
-enum MicState { idle, starting, listening, denied }
+enum MicState { idle, starting, listening, denied, failed }
 
 /// Heuristic breathing-rhythm sensor: not a medical device, and it does not
 /// try to isolate speech from breath. It watches the mic's decibel envelope
@@ -34,9 +34,42 @@ class BreathingDetector extends ChangeNotifier {
   DateTime? _regularSince;
   DateTime? _suppressUntil;
   NoiseMeter? _meter;
+  String? failure;
+  Timer? _healthTimer;
+  DateTime? _lastReadingAt;
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+  @visibleForTesting
+  void checkInputHealth() {
+    if (state == MicState.listening &&
+        _lastReadingAt != null &&
+        clock().difference(_lastReadingAt!) > const Duration(seconds: 3)) {
+      noteInputFailure();
+    }
+  }
+
+  void noteInputFailure() {
+    if (state == MicState.idle || state == MicState.failed) return;
+    failure = 'マイク入力が停止しました。権限を確認して再開してください。';
+    state = MicState.failed;
+    _healthTimer?.cancel();
+    _sub?.cancel();
+    _sub = null;
+    unawaited(NativeEye.stop('breath'));
+    _samples.clear();
+    _regularSince = null;
+    regularFor = Duration.zero;
+    regularityScore = 0;
+    // An input failure cannot prove that an existing alarm has resolved.
+    notifyListeners();
+  }
+
   StreamSubscription<NoiseReading>? _sub;
 
   Future<void> start() async {
+    if (state == MicState.starting || state == MicState.listening) return;
+    await _sub?.cancel();
+    failure = null;
     state = MicState.starting;
     notifyListeners();
     final granted = await Permission.microphone.request();
@@ -50,12 +83,23 @@ class BreathingDetector extends ChangeNotifier {
       _regularSince = null;
       alarmFiring = false;
       _meter = NoiseMeter();
-      _sub = _meter!.noise.listen(_onReading, onError: (_) {});
+      _sub = _meter!.noise.listen(
+        _onReading,
+        onError: (Object _) => noteInputFailure(),
+        onDone: noteInputFailure,
+      );
       // マイクだけで使う人もいる。前景サービスが無いと背面で AudioRecord が
       // 止められるので、こちらでもサービスを掴んでおく（保持者は数えている
       // ので、瞼検知を止めてもこちらの背面動作は生き残る）。
       await NativeEye.start(holder: 'breath');
+      if (state != MicState.starting) return;
       state = MicState.listening;
+      _lastReadingAt = clock();
+      _healthTimer?.cancel();
+      _healthTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => checkInputHealth(),
+      );
     } catch (_) {
       state = MicState.denied;
     }
@@ -63,6 +107,9 @@ class BreathingDetector extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    state = MicState.idle;
+    _healthTimer?.cancel();
+    failure = null;
     await NativeEye.stop('breath');
     await _sub?.cancel();
     _sub = null;
@@ -94,7 +141,8 @@ class BreathingDetector extends ChangeNotifier {
   DateTime? _lastLogAt;
 
   void _onReading(NoiseReading reading) {
-    final now = DateTime.now();
+    final now = clock();
+    _lastReadingAt = now;
     currentDb = reading.meanDecibel.isFinite ? reading.meanDecibel : 0;
     if (_lastLogAt == null ||
         now.difference(_lastLogAt!) >= const Duration(seconds: 2)) {
@@ -117,7 +165,7 @@ class BreathingDetector extends ChangeNotifier {
       regularityScore = 0;
       _regularSince = null;
       regularFor = Duration.zero;
-      if (alarmFiring) alarmFiring = false;
+      // Keep a triggered alert latched: the alarm sound itself is loud.
       notifyListeners();
       return;
     }
@@ -134,7 +182,7 @@ class BreathingDetector extends ChangeNotifier {
     } else {
       _regularSince = null;
       regularFor = Duration.zero;
-      if (alarmFiring) alarmFiring = false;
+      // Keep a triggered alert latched: the alarm sound itself is loud.
     }
 
     if (!alarmFiring && regularFor >= alarmThreshold) {
@@ -177,6 +225,7 @@ class BreathingDetector extends ChangeNotifier {
 
   @override
   void dispose() {
+    _healthTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }

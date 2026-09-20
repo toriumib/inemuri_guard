@@ -374,7 +374,10 @@ class EyeService : Service() {
             val startedAt = System.currentTimeMillis()
             det.process(input)
                 .addOnSuccessListener { faces ->
-                    val f = faces.firstOrNull()
+                    if (targetTrackingId == null && faces.size == 1) {
+                        targetTrackingId = faces.single().trackingId
+                    }
+                    val f = targetTrackingId?.let { id -> faces.firstOrNull { it.trackingId == id } }
                     lastAnalysisMs = System.currentTimeMillis() - startedAt
                     logReading(f != null, f?.leftEyeOpenProbability, f?.rightEyeOpenProbability)
                     sink?.invoke(
@@ -453,7 +456,10 @@ class EyeService : Service() {
         }
     }
 
+    private var targetTrackingId: Int? = null
+
     private fun closeCamera() {
+        targetTrackingId = null
         isRunning = false
         opening = false
         try { session?.close() } catch (_: Exception) {}

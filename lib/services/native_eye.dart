@@ -94,30 +94,40 @@ class NativeEye {
     void Function(String message)? onFailed,
   ) {
     _sub?.cancel();
-    _sub = _events.receiveBroadcastStream().listen((e) {
-      if (e is! Map) return;
-      // 見張れなくなった知らせ。黙って止まるより、止まったと言うほうがよい。
-      final failure = e['error'];
-      if (failure is String) {
-        _running = false;
-        onFailed?.call(failure);
-        return;
-      }
-      onReading(
-        e['face'] == true,
-        (e['left'] as num?)?.toDouble(),
-        (e['right'] as num?)?.toDouble(),
-      );
-      // 頭の角度。顔があるときだけ付いてくる。
-      final px = e['pitch'], py = e['yaw'], pz = e['roll'];
-      if (onPose != null && px is num && py is num && pz is num) {
-        onPose(px.toDouble(), py.toDouble(), pz.toDouble());
-      }
-    }, onError: (Object err) => debugPrint('NativeEye stream error: $err'));
+    _sub = _events.receiveBroadcastStream().listen(
+      (e) {
+        if (e is! Map) return;
+        // 見張れなくなった知らせ。黙って止まるより、止まったと言うほうがよい。
+        final failure = e['error'];
+        if (failure is String) {
+          _running = false;
+          onFailed?.call(failure);
+          return;
+        }
+        onReading(
+          e['face'] == true,
+          (e['left'] as num?)?.toDouble(),
+          (e['right'] as num?)?.toDouble(),
+        );
+        // 頭の角度。顔があるときだけ付いてくる。
+        final px = e['pitch'], py = e['yaw'], pz = e['roll'];
+        if (onPose != null && px is num && py is num && pz is num) {
+          onPose(px.toDouble(), py.toDouble(), pz.toDouble());
+        }
+      },
+      onError: (Object err) {
+        onFailed?.call('カメラ入力が停止しました');
+      },
+    );
   }
 
   static Future<void> stop(String holder) async {
     _holders.remove(holder);
+    if (holder == 'eye') {
+      await _sub?.cancel();
+      _sub = null;
+      await release();
+    }
     // まだ誰かが使っているなら、サービスは落とさない。
     if (_holders.isNotEmpty) return;
     await _sub?.cancel();
