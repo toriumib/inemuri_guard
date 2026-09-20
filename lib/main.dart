@@ -11,6 +11,7 @@ import 'services/alarm_service.dart';
 import 'services/alert_coordinator.dart';
 import 'services/breathing_detector.dart';
 import 'services/car_trigger.dart';
+import 'services/device_readiness.dart';
 import 'services/drowsiness_detector.dart';
 import 'services/hydration_service.dart';
 import 'services/nap_timer_service.dart';
@@ -107,6 +108,7 @@ class InemuriGuardApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: stats),
+        ChangeNotifierProvider(create: (_) => DeviceReadiness()),
         ChangeNotifierProvider.value(value: sleepLog),
         ChangeNotifierProvider.value(value: sleepTime),
         ChangeNotifierProvider.value(value: pomodoro),

@@ -18,6 +18,7 @@ import '../theme/app_theme.dart';
 import '../widgets/breathing_card.dart';
 import '../widgets/hydration_card.dart';
 import '../widgets/tone_row.dart';
+import '../widgets/quick_setup_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -31,6 +32,7 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         _DetectionSettingsCard(stats: stats),
+        const QuickSetupCard(showShortcut: true),
         const SizedBox(height: 16),
         if (CarTrigger.isSupported) ...[
           const _CarStartCard(),
@@ -113,6 +115,16 @@ class _DetectionSettingsCard extends StatelessWidget {
               value: stats.illuminateInDark,
               onChanged: (v) => stats.setIlluminateInDark(v),
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('アラーム中に画面を点滅させる'),
+              subtitle: const Text('通常は音と振動で知らせます。点滅が苦手な方はオフのまま使えます。'),
+              value: stats.flashAlarm,
+              onChanged: (v) async {
+                await stats.setFlashAlarm(v);
+                alarm.useTorch = v && stats.useBackCamera && Torch.isSupported;
+              },
+            ),
             const Divider(height: 24),
             ToneRow(alarm: alarm),
           ],
@@ -133,8 +145,10 @@ class _CarStartCard extends StatelessWidget {
     if (devices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ペアリング済みの Bluetooth 機器が見つかりません。'
-              '先に端末の設定で車とペアリングし、Bluetooth の許可を与えてください。'),
+          content: Text(
+            'ペアリング済みの Bluetooth 機器が見つかりません。'
+            '先に端末の設定で車とペアリングし、Bluetooth の許可を与えてください。',
+          ),
         ),
       );
       return;
@@ -147,7 +161,10 @@ class _CarStartCard extends StatelessWidget {
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, 6),
-              child: Text('車のオーディオはどれ？', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                '車のオーディオはどれ？',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             for (final d in devices)
               ListTile(
@@ -224,7 +241,9 @@ class _CarStartCard extends StatelessWidget {
               'ほかの入口：クイック設定に「居眠りガード」タイルを追加すると、どの画面からでも 1 回で始まります。'
               'ホルダーに NFC タグ（URI: inemuri://start）を貼れば、置くだけで開きます。'
               '自動化アプリからは com.stop.sleeping.START で起動できます。',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontSize: 12),
             ),
           ],
         ),
@@ -249,7 +268,10 @@ class _BetaCard extends StatelessWidget {
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
         childrenPadding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
-        title: Text('開発中の機能（β）', style: Theme.of(context).textTheme.titleMedium),
+        title: Text(
+          '開発中の機能（β）',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         subtitle: Text(
           '試している機能。動かない端末・場面があります。',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
@@ -267,7 +289,7 @@ class _BetaCard extends StatelessWidget {
             value: stats.useBackCamera,
             onChanged: (v) async {
               await stats.setUseBackCamera(v);
-              alarm.useTorch = v && Torch.isSupported;
+              alarm.useTorch = v && stats.flashAlarm && Torch.isSupported;
               // 見張っている最中なら、カメラをその場で開き直す。
               await detector.setUseBackCamera(v);
             },
@@ -1024,7 +1046,6 @@ class _NudgeCardState extends State<_NudgeCard> with WidgetsBindingObserver {
   }
 }
 
-
 /// 差出人・件名の絞り込み。
 ///
 /// 「上司のアドレスから来たときだけ起こしてほしい」に応えるための欄。
@@ -1051,9 +1072,7 @@ class _SenderFilterFieldState extends State<_SenderFilterField> {
 
   void _save() {
     // 半角カンマ・全角読点・改行のどれで区切っても受ける。
-    widget.nudge.setSenderFilter(
-      _controller.text.split(RegExp(r'[,、\n]')),
-    );
+    widget.nudge.setSenderFilter(_controller.text.split(RegExp(r'[,、\n]')));
     FocusScope.of(context).unfocus();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -104,7 +104,7 @@ class NotificationService implements NotificationScheduler {
     await android?.createNotificationChannel(pomodoro);
     await android?.createNotificationChannel(hydration);
     await android?.createNotificationChannel(restAdvice);
-    await android?.requestNotificationsPermission();
+    // Notification permission is requested from the setup button, after the UI explains it.
     // zonedSchedule は TZDateTime しか受け付けない。絶対時刻を UTC で渡す
     // ので、端末のゾーン名を調べる必要はない。
     tzdata.initializeTimeZones();

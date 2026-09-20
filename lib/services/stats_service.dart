@@ -91,6 +91,14 @@ class StatsService extends ChangeNotifier {
   /// 鳴っている間、声で止められるようにするか。既定 ON。
   /// マイクの許可が無ければ何も起きない（ON にしたときに聞く）。
   bool voiceStop = true;
+  bool flashAlarm = false;
+  Future<void> setFlashAlarm(bool value) async {
+    flashAlarm = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('flash_alarm', value);
+    notifyListeners();
+  }
+
   Set<String> ownedSkinIds = {};
   AppSkin selectedSkin = AppSkin.paper;
   final List<LogEntry> log = [];
@@ -140,6 +148,7 @@ class StatsService extends ChangeNotifier {
     termsAcceptedVersion = prefs.getInt(_kTermsAccepted) ?? 0;
     illuminateInDark = prefs.getBool(_kIlluminate) ?? true;
     voiceStop = prefs.getBool(_kVoiceStop) ?? true;
+    flashAlarm = prefs.getBool('flash_alarm') ?? false;
     napsAllTime = prefs.getInt(_kNapsAllTime) ?? 0;
     ownedSkinIds = (prefs.getStringList(_kOwnedSkins) ?? []).toSet();
     final savedSkin = AppSkin.fromId(prefs.getString(_kSelectedSkin));

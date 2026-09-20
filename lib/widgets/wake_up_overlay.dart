@@ -8,9 +8,7 @@ import '../theme/app_theme.dart';
 /// 文字を大きく。点滅（AlarmFlashOverlay）の上に載せ、まわりは透かして
 /// 点滅が見えるようにしてある。
 ///
-/// [onWake] が null のとき（目のアラームで顔が見えている間）はボタンを出さず、
-/// 「目を開けたまま」の指示だけを大きく出す——押して止める道を作ると、
-/// 目を開けずに止められてしまうから。
+/// [onWake] が指定されたら手動で解除できる。自動解除を待つ必要はない。
 class WakeUpOverlay extends StatelessWidget {
   final bool active;
   final String message;
@@ -55,7 +53,7 @@ class WakeUpOverlay extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               child: SizedBox(
-                height: 160,
+                height: 150,
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
@@ -65,12 +63,12 @@ class WakeUpOverlay extends StatelessWidget {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 40,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   onPressed: onWake,
-                  child: const Text('起きた！'),
+                  child: const Text('起きた・止める', textAlign: TextAlign.center),
                 ),
               ),
             )

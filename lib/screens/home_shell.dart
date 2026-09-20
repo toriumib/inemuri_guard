@@ -7,6 +7,7 @@ import '../services/alarm_service.dart';
 import '../services/alert_coordinator.dart';
 import '../services/breathing_detector.dart';
 import '../services/car_trigger.dart';
+import '../services/device_readiness.dart';
 import '../services/drowsiness_detector.dart';
 import '../services/hydration_service.dart';
 import '../services/nap_timer_service.dart';
@@ -37,6 +38,18 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
   BannerAd? _banner;
+  Future<void> _consumeShortcut() async {
+    if (!mounted) return;
+    final requested = await context
+        .read<DeviceReadiness>()
+        .consumeStartRequest();
+    if (!mounted || !requested) return;
+    final detector = context.read<DrowsinessDetector>();
+    detector.setThresholdSeconds(
+      context.read<StatsService>().eyeThresholdSeconds,
+    );
+    if (detector.state != DetectorState.watching) await detector.start();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -49,6 +62,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         // 背面ではポモドーロの合図を OS の通知に任せる（予約を消さない）。
         context.read<PomodoroService>().onBackground();
       case AppLifecycleState.resumed:
+        context.read<DeviceReadiness>().refresh();
+        _consumeShortcut();
         detector.handleAppResumed();
         // 通知アクセスの許可画面から戻ってきた場合をここでも拾う。
         // 設定タブを開いていないと気づけない作りだと、許可したのに
@@ -76,6 +91,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    context.read<DeviceReadiness>().onStartRequested = _consumeShortcut;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<DeviceReadiness>().refresh();
+        _consumeShortcut();
+      }
+    });
     // 「呼ばれたら起こす」の購読はここで始める。通知が来たら、居眠り検知と
     // 同じ鳴らし方（こっそりモードの段階的な強め方）に乗せる。
     context.read<NudgeService>().load(
@@ -174,11 +196,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
 
     final anyAlarming = alerts.isAlarming;
-    final canDismiss =
-        anyAlarming &&
-        !(detector.alarmFiring &&
-            !detector.faceLostLong &&
-            !detector.inputStalled);
+    final canDismiss = anyAlarming;
 
     final (mode, label, value) = _status(
       detector,
@@ -201,7 +219,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     mode: mode,
                     label: label,
                     value: value,
-                    primaryLabel: detector.state == DetectorState.starting
+                    primaryLabel: _index == 0
+                        ? null
+                        : detector.state == DetectorState.starting
                         ? '起動中…'
                         : (detector.state == DetectorState.watching
                               ? '停止'
@@ -219,8 +239,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                               await detector.start();
                             }
                           },
-                    // 目・姿勢のアラーム中はスヌーズを出さない——目を開ける／
-                    // 姿勢を戻せば止まる。顔を見失っているときだけ出す。
+                    // 自動解除に加え、誰でも操作で止められるようにする。
                     onSnooze: canDismiss ? _wakeUp : null,
                   ),
                 ),
@@ -245,7 +264,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 detector.faceLostLong &&
                 (detector.frameLuma ?? 255) < 40,
           ),
-          AlarmFlashOverlay(active: anyAlarming),
+          AlarmFlashOverlay(
+            active:
+                anyAlarming &&
+                stats.flashAlarm &&
+                !MediaQuery.disableAnimationsOf(context),
+          ),
           // 寝ぼけた手で押せる大きさの「起きた！」。点滅の上に載せる。
           WakeUpOverlay(
             active: anyAlarming,

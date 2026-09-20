@@ -61,6 +61,7 @@ class AlarmService extends ChangeNotifier {
       ),
     );
     _loopPlayer.setAudioContext(alarmContext);
+    _previewPlayer.setAudioContext(alarmContext);
   }
 
   AlarmTone tone = AlarmTone.chime;

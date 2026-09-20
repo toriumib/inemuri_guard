@@ -123,3 +123,15 @@ duration (standard: 5 seconds; sensitive: 3 seconds; custom: 3–60 seconds).
 Breathing alerts stay active until dismissed so the alarm cannot cancel itself.
 Device testing is still required for lighting, glasses, camera handover, permissions,
 and actual audio output; these are product heuristics, not validated diagnostic thresholds.
+
+## 2026-09-20 手間を減らす改善（1.7.0）
+
+- 日常画面は開始／停止と音の確認を中心に整理。感度・設置場所・検知詳細は折りたたみ表示。
+- カメラ権限の設定から戻ると監視を再開でき、対象を見失った場合も一操作で再取得。
+- Kotlin連携でアラーム音量ゼロ・通知無効を確認し、必要な設定へ直接移動。通知の許可は説明を読んでから操作する。
+- Android 13以降はクイック設定タイルの追加をOSへ依頼できる。タイルからの起動は自動開始設定にかかわらず監視を開始。旧OSでは手動追加の案内を表示。
+- 警告は常に「起きた・止める」で解除可能。画面とライトの点滅は初期状態で無効。大きな文字でも操作できるレイアウトへ調整。
+- Flutterの画面と既存Kotlinのバックグラウンド処理を維持し、必要なOS機能だけを追加。Androidのカメラ・バックグラウンド制限は引き続き適用される。
+- 実機確認: 初回権限拒否と再許可、タイル追加と冷／温起動、音量ゼロからの復帰、通知設定、画面消灯、各端末の警告音と停止操作。
+
+検証結果: flutter test 85件成功、flutter analyze 指摘なし、Android debug APKビルド成功。接続端末がないため実機検証は未実施。
