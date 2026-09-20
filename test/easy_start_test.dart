@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:inemuri_guard/widgets/first_use_card.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -101,6 +102,61 @@ void main() {
     await restored.load();
     expect(restored.flashAlarm, true);
   });
+  testWidgets(
+    'first-use setup requires visible eyes and explicit sound confirmation',
+    (tester) async {
+      final stats = StatsService();
+      await stats.load();
+      final detector = _Detector();
+      final alarm = _Alarm();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: stats),
+            ChangeNotifierProvider<DrowsinessDetector>.value(value: detector),
+            ChangeNotifierProvider<AlarmService>.value(value: alarm),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: FirstUseCard())),
+          ),
+        ),
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, '音を確認する'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await detector.start();
+      await tester.pump();
+      await tester.tap(find.text('音を確認する'));
+      await tester.pump();
+      expect(alarm.previews, 1);
+      expect(stats.setupCompleted, false);
+      detector.inputStalled = true;
+      detector.notifyListeners();
+      await tester.pump();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, '聞こえた・準備完了'),
+            )
+            .onPressed,
+        isNull,
+      );
+      detector.inputStalled = false;
+      detector.notifyListeners();
+      await tester.pump();
+      await tester.tap(find.text('聞こえた・準備完了'));
+      await tester.pumpAndSettle();
+      expect(find.text('はじめの準備'), findsNothing);
+      final restored = StatsService();
+      await restored.load();
+      expect(restored.setupCompleted, true);
+    },
+  );
   testWidgets('start, sound check and stop need no advanced settings', (
     tester,
   ) async {

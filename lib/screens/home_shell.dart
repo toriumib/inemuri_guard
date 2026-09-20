@@ -18,6 +18,7 @@ import '../services/sleep_log_service.dart';
 import '../services/stats_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_hero.dart';
+import '../widgets/sensitivity_control.dart';
 import '../widgets/wake_up_overlay.dart';
 import 'detect_screen.dart';
 import 'improve_screen.dart';
@@ -146,7 +147,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // 開いた瞬間から見張る。机に置いて開くだけで始まるのがこの道具の使い方。
     // 初回はカメラの許可ダイアログが出る。断られたら denied になるだけで、
     // 次回以降は「検知を開始」を押してもらう（毎回ダイアログを出し続けない）。
-    if (stats.autoStartDetection) {
+    if (stats.autoStartDetection && stats.setupCompleted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final detector = context.read<DrowsinessDetector>();
@@ -168,7 +169,44 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// 画面の「起きた！」／スヌーズ。目のアラームは 3 分のスヌーズ、
   /// 仮眠は 3 分後にもう一度。
   void _wakeUp() {
+    final detectionAlarm = context.read<DrowsinessDetector>().alarmFiring;
     context.read<AlertCoordinator>().dismiss(snoozeNap: true);
+    if (detectionAlarm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('起きていたのに鳴りましたか？感度を調整できます。'),
+          action: SnackBarAction(
+            label: '感度を調整',
+            onPressed: () {
+              final detector = context.read<DrowsinessDetector>();
+              final stats = context.read<StatsService>();
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => MultiProvider(
+                  providers: [
+                    ChangeNotifierProvider.value(value: detector),
+                    ChangeNotifierProvider.value(value: stats),
+                  ],
+                  child: const SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('感度は自動で変わりません。必要な場合だけ変更してください。'),
+                          SensitivityControl(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
   }
 
   void _dismissFromOutside(String why) {

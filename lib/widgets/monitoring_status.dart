@@ -17,7 +17,7 @@ class MonitoringStatus extends StatelessWidget {
         Text(
           detector.monitoringLabel,
           key: const Key('camera-health'),
-          style: Theme.of(context).textTheme.titleSmall,
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         if (detector.state == DetectorState.watching &&
             (detector.noFaceSeen ||
@@ -25,7 +25,7 @@ class MonitoringStatus extends StatelessWidget {
                 !detector.eyesAvailable))
           Text(
             detector.inputStalled
-                ? 'カメラ権限や他のアプリの使用を確認し、停止してから再開してください。'
+                ? '下の「カメラをつなぎ直す」を押してください。他のアプリがカメラを使用中なら閉じてください。'
                 : detector.noFaceSeen
                 ? '一人でカメラに映り、顔を明るくしてください。対象が変わったときは見張りを再開してください。'
                 : '眼鏡の反射や顔の向きを調整してください。目を読み取れない間は閉眼を判定できません。',

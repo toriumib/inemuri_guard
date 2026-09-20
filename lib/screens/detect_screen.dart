@@ -11,6 +11,7 @@ import '../services/device_readiness.dart';
 import '../widgets/camera_stage.dart';
 import '../widgets/sensitivity_control.dart';
 import '../widgets/monitoring_status.dart';
+import '../widgets/first_use_card.dart';
 import '../widgets/quick_setup_card.dart';
 
 /// Daily use needs no configuration. Diagnostics and optional modes stay folded.
@@ -23,6 +24,7 @@ class DetectScreen extends StatefulWidget {
 class _DetectScreenState extends State<DetectScreen>
     with WidgetsBindingObserver {
   bool _resumeAfterPermission = false;
+  bool _recovering = false;
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state != AppLifecycleState.resumed || !_resumeAfterPermission) return;
@@ -73,9 +75,15 @@ class _DetectScreenState extends State<DetectScreen>
   }
 
   Future<void> _retry() async {
-    final detector = context.read<DrowsinessDetector>();
-    await detector.stop();
-    if (mounted) await _toggle();
+    if (_recovering) return;
+    setState(() => _recovering = true);
+    try {
+      final detector = context.read<DrowsinessDetector>();
+      await detector.stop();
+      if (mounted) await _toggle();
+    } finally {
+      if (mounted) setState(() => _recovering = false);
+    }
   }
 
   Future<void> _maps() async {
@@ -110,6 +118,7 @@ class _DetectScreenState extends State<DetectScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const FirstUseCard(),
         Text(
           'スマホを立てて、自分に向けるだけ。',
           style: Theme.of(context).textTheme.titleLarge,
@@ -184,7 +193,7 @@ class _DetectScreenState extends State<DetectScreen>
           ),
         if (watching && (detector.inputStalled || detector.faceLostLong))
           OutlinedButton.icon(
-            onPressed: _retry,
+            onPressed: _recovering ? null : _retry,
             icon: const Icon(Icons.refresh),
             label: const Text('カメラをつなぎ直す'),
           ),
