@@ -8,14 +8,17 @@ import 'package:url_launcher/url_launcher.dart';
 class SupportService {
   SupportService._();
 
-  static const packageName = 'com.toriumi.inemuri_guard';
+  static const packageName = 'com.stop.sleeping';
   static const buyMeACoffeeUrl = 'https://buymeacoffee.com/toriumi';
   static const storeUrl =
       'https://play.google.com/store/apps/details?id=$packageName';
 
-  static const shareText =
-      '会社で居眠りしちゃう人へ。カメラで目の開閉を見て起こしてくれる「居眠りガード」使ってる。'
-      '科学的に効果があるとされる10分パワーナップのタイマーも付いてる。';
+  static String shareMessage(String languageCode) => languageCode == 'ja'
+      ? '机で使える、カメラでまぶたを見守る「居眠りガード」。仮眠タイマーも使えます。\n$storeUrl'
+      : 'Drowsiness Guard: camera-based drowsiness alerts and a nap timer. Try the English Web app; keep the page visible while using it.\nhttps://inemuri.toriumis.com/en/';
+
+  static String get _shareMessage =>
+      shareMessage(PlatformDispatcher.instance.locale.languageCode);
 
   /// A review ask that survives Google's quota. `requestReview()` silently
   /// shows nothing when the quota is used up and still reports success, so
@@ -47,12 +50,12 @@ class SupportService {
   }
 
   static Future<void> shareApp() async {
-    await SharePlus.instance.share(ShareParams(text: '$shareText\n$storeUrl'));
+    await SharePlus.instance.share(ShareParams(text: _shareMessage));
   }
 
   /// 𝕏 (Twitter) intent URL, same approach as the nanimonjya app.
   static Future<void> shareOnX() async {
-    final text = Uri.encodeComponent('$shareText\n$storeUrl');
+    final text = Uri.encodeComponent(_shareMessage);
     await _open('https://twitter.com/intent/tweet?text=$text');
   }
 

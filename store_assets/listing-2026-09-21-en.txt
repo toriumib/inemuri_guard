@@ -1,0 +1,47 @@
+DRAFT — not submitted to Google Play.
+Android UI is currently mainly Japanese. Country availability is unverified.
+
+TITLE
+Drowsiness Guard: Desk Alarm
+
+SHORT DESCRIPTION
+Camera-based drowsiness alerts and a nap timer. Android UI mainly in Japanese.
+
+FULL DESCRIPTION
+Drowsiness Guard uses your phone camera to look for sustained eye closure and changes in head posture. Try it at your desk while working or studying.
+
+LANGUAGE
+The Android app currently has a mainly Japanese interface. An English Web version is available at https://inemuri.toriumis.com/en/ . Keep the Web page visible while using it. Web and Android features differ.
+
+GET READY ONCE
+Start monitoring, allow camera access, position your face and eyes in view, and test the sound. Confirm you heard it to finish setup. Settings are remembered for later use. Standard sensitivity is 5 seconds; a 3-second preset and custom durations are available.
+
+ALERTS AND CONTROL
+Sound and vibration can alert you. Screen flashing is off by default. Stop an alert with the on-screen button. If an alert was unwanted, open sensitivity settings; detection is not automatically weakened.
+
+WATCH NOTIFICATIONS
+Compatible paired watches may receive the Android app's notifications. Delivery and vibration depend on the watch, companion app and notification settings. Use the test-notification button to check. The Web app does not forward watch alerts.
+
+WHEN MONITORING IS INTERRUPTED
+The app shows when camera input stops or eyes cannot be read. Reconnect the camera from the monitoring screen. Background camera availability depends on Android, device settings and permissions.
+
+OTHER TOOLS
+A nap timer, Pomodoro timer and hydration reminders are included. Availability differs between Android and Web. Experimental features can produce false alerts.
+
+PRIVACY
+Camera analysis happens on the device. Camera frames are not uploaded or recorded by this feature. Optional voice recognition may use a device speech-recognition service that processes audio remotely. Ads and purchases use network services. See the privacy policy for details.
+
+BEFORE USE
+Detection can miss drowsiness or alert while you are awake. This app is not a medical device, safety system or substitute for sleep. Test sound and output routing before use. Headphone-only playback is not guaranteed. Do not operate a phone while driving. If sleepy, stop somewhere safe and rest.
+
+Free with ads. Optional purchases are shown in the app. The Android interface is currently mainly Japanese.
+
+English Web help: https://inemuri.toriumis.com/help/en/
+Terms: https://inemuri.toriumis.com/en/terms/
+Privacy policy (Japanese): https://inemuri.toriumis.com/app/privacy/
+
+RELEASE NOTES — 1.8.1 candidate
+- Correct the store, review and share destination.
+- Non-Japanese devices share the English Web entry.
+- Includes first-use setup and camera recovery from 1.8.0.
+- Full Android English UI translation is not included.

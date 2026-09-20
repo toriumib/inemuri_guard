@@ -156,3 +156,9 @@ and actual audio output; these are product heuristics, not validated diagnostic 
 - 新たな外部計測は追加せず、準備完了は端末内に保存する。実機カメラ・音・時計の確認は別途必要。
 
 検証結果: 自動テスト90件成功、flutter analyze指摘なし、v1.8.0 debug APKビルド成功。実機検証は未実施。
+
+## 2026-09-21 海外向け導線（1.8.1）
+
+共有・レビューのアプリIDを com.stop.sleeping に修正。非日本語端末では英語の紹介文と英語Web入口を共有。Android本体の完全英語化ではない。英語ストア文面候補は store_assets/listing-2026-09-21-en.txt に保存し、Consoleへは未反映。
+
+検証: 自動テスト92件成功、静的解析指摘なし、v1.8.1 debug APKビルド成功。新しいストア文面は未提出、実機検証は未実施。
