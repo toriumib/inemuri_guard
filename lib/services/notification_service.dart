@@ -8,16 +8,10 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'notification_scheduler.dart';
 
-/// Posting a high-importance, vibrating notification does double duty on
-/// Android: it buzzes the phone AND — because Wear OS mirrors phone
-/// notifications by default — buzzes any paired watch too, with no separate
-/// watch app required. This is intentionally the *only* way this app talks
-/// to a watch; there's no companion Wear OS app.
-///
-/// [bridgeToWatch] controls that mirroring. Off = the notification is posted
-/// with FLAG_LOCAL_ONLY, which tells Android not to bridge it to a paired
-/// watch (the phone still vibrates normally). Set from StatsService on
-/// startup and whenever the user flips the 設定 toggle.
+/// Uses phone notification mirroring for compatible paired watches.
+/// Delivery and vibration depend on the companion app and watch settings.
+/// No companion watch app or delivery acknowledgement is available.
+/// [bridgeToWatch] uses FLAG_LOCAL_ONLY when disabled.
 /// 通知の「止める」ボタンは、アプリを開かずに別の isolate で届く。
 /// そこからは UI もサービスも触れないので、名前つきの port で本体へ投げる。
 @pragma('vm:entry-point')
@@ -60,7 +54,7 @@ class NotificationService implements NotificationScheduler {
     const channel = AndroidNotificationChannel(
       _channelId,
       '居眠り・仮眠アラーム',
-      description: '目を閉じた/寝息を検知した、または仮眠タイマー終了時に鳴らす通知（時計にも振動が届きます）',
+      description: '目を閉じた/寝息を検知した、または仮眠タイマー終了時に鳴らす通知（対応する時計への通知転送）',
       importance: Importance.max,
       playSound:
           false, // the app plays its own alarm tone; this channel is for vibration/bridging only
@@ -174,33 +168,7 @@ class NotificationService implements NotificationScheduler {
       return;
     }
     debugPrint('fireAlarm: posting (bridgeToWatch=$bridgeToWatch)');
-    final androidDetails = AndroidNotificationDetails(
-      _channelId,
-      '居眠り・仮眠アラーム',
-      importance: Importance.max,
-      priority: Priority.max,
-      ongoing: true,
-      autoCancel: false,
-      playSound: false,
-      enableVibration: true,
-      // Three 700ms bursts with short gaps. A short single buzz is easy to
-      // sleep through on a wrist; a repeating pattern reads as "wake up".
-      vibrationPattern: Int64List.fromList([0, 700, 350, 700, 350, 700]),
-      category: AndroidNotificationCategory.alarm,
-      fullScreenIntent: true,
-      additionalFlags: bridgeToWatch
-          ? null
-          : Int32List.fromList([_flagLocalOnly]),
-      // アプリに戻らずに止められるように。押すと通知も消える。
-      actions: const [
-        AndroidNotificationAction(
-          stopActionId,
-          '止める',
-          showsUserInterface: false,
-          cancelNotification: true,
-        ),
-      ],
-    );
+    final androidDetails = alarmNotificationDetails();
     await _plugin.show(
       NotificationIds.alarm,
       title,
@@ -208,6 +176,55 @@ class NotificationService implements NotificationScheduler {
       NotificationDetails(android: androidDetails),
     );
     debugPrint('fireAlarm: posted');
+  }
+
+  /// Shared alarm/test configuration so the test exercises the actual channel.
+  AndroidNotificationDetails alarmNotificationDetails({bool test = false}) {
+    return AndroidNotificationDetails(
+      _channelId,
+      '居眠り・仮眠アラーム',
+      importance: Importance.max,
+      priority: Priority.max,
+      // Ongoing notifications are not bridged to Wear OS.
+      ongoing: false,
+      autoCancel: test,
+      playSound: false,
+      enableVibration: true,
+      // Requested phone vibration pattern; watches may use their own pattern.
+      vibrationPattern: Int64List.fromList([0, 700, 350, 700, 350, 700]),
+      category: AndroidNotificationCategory.alarm,
+      fullScreenIntent: !test,
+      additionalFlags: bridgeToWatch
+          ? null
+          : Int32List.fromList([_flagLocalOnly]),
+      // アプリに戻らずに止められるように。押すと通知も消える。
+      actions: test
+          ? const []
+          : const [
+              AndroidNotificationAction(
+                stopActionId,
+                '止める',
+                showsUserInterface: false,
+                cancelNotification: true,
+              ),
+            ],
+    );
+  }
+
+  Future<bool> testWatchNotification() async {
+    if (!_ready || !bridgeToWatch) return false;
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (await android?.areNotificationsEnabled() != true) return false;
+    await _plugin.show(
+      NotificationIds.watchTest,
+      '居眠りガード・時計の通知テスト',
+      '時計が振動したか確認してください。これはテストです。',
+      NotificationDetails(android: alarmNotificationDetails(test: true)),
+    );
+    return true;
   }
 
   Future<void> cancelAlarm() async {

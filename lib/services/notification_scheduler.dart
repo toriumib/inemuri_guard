@@ -27,6 +27,7 @@ class NotificationIds {
 
   /// 居眠り・仮眠のアラーム（既存）。
   static const alarm = 1001;
+  static const watchTest = 1002;
 
   /// ポモドーロの区間終了。
   static const pomodoro = 1100;

@@ -33,6 +33,7 @@ class SettingsScreen extends StatelessWidget {
       children: [
         _DetectionSettingsCard(stats: stats),
         const QuickSetupCard(showShortcut: true),
+        _WatchBridgeCard(stats: stats),
         const SizedBox(height: 16),
         if (CarTrigger.isSupported) ...[
           const _CarStartCard(),
@@ -297,7 +298,6 @@ class _BetaCard extends StatelessWidget {
           const SizedBox(height: 10),
           const BreathingCard(),
           const SizedBox(height: 12),
-          _WatchBridgeCard(stats: stats),
         ],
       ),
     );
@@ -322,11 +322,14 @@ class _WatchBridgeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('時計にも通知（β）', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'スマートウォッチにも知らせる',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 2),
             Text(
-              '眠気を検知したとき、ペアリングしたWear OSの時計でも振動します。'
-              'スマホの通知がそのまま時計へ転送される仕組みで、専用アプリは不要です。',
+              '対応する時計へ警告通知を転送し、時計側の設定に応じて振動で知らせます。'
+              'Wear OSでは専用の時計アプリは不要です。',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 6),
@@ -339,6 +342,40 @@ class _WatchBridgeCard extends StatelessWidget {
               },
               title: const Text('時計へ転送する'),
               subtitle: const Text('オフにしてもスマホ側の振動・音は変わりません'),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.watch_outlined),
+              label: const Text('時計への通知を試す'),
+              onPressed: !stats.watchBridge
+                  ? null
+                  : () async {
+                      var sent = false;
+                      try {
+                        sent = await notifications.testWatchNotification();
+                      } catch (_) {}
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            sent
+                                ? 'テスト通知を出しました。時計が振動したか確認してください。スマホも振動する場合があります。'
+                                : '通知を出せませんでした。スマホの通知許可を確認してください。',
+                          ),
+                        ),
+                      );
+                    },
+            ),
+            const Text(
+              '届かない場合は、時計の管理アプリで「居眠りガード」の通知を許可し、'
+              '時計の消音・おやすみモードと接続状態を確認してください。'
+              'スマホ使用中も時計へ通知する設定が必要な機種があります。',
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '時計の接続・到達をこの画面で確認する機能はありません。'
+              'Wear OS以外はメーカーの通知転送対応によります。'
+              '時計に「止める」が表示される場合は警告を停止できます。'
+              '通知を払い消すだけではアラームは止まりません。',
             ),
           ],
         ),
