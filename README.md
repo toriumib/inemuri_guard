@@ -162,3 +162,18 @@ and actual audio output; these are product heuristics, not validated diagnostic 
 共有・レビューのアプリIDを com.stop.sleeping に修正。非日本語端末では英語の紹介文と英語Web入口を共有。Android本体の完全英語化ではない。英語ストア文面候補は store_assets/listing-2026-09-21-en.txt に保存し、Consoleへは未反映。
 
 検証: 自動テスト92件成功、静的解析指摘なし、v1.8.1 debug APKビルド成功。新しいストア文面は未提出、実機検証は未実施。
+
+## 2026-09-21 広告の表示条件と同意（1.8.2）
+
+- 広告は準備完了後、監視・警告・タイマーを停止して本人が開いた記録タブだけ。検知画面の共通バナーと未使用の全画面広告の先読みを廃止。
+- 背面移行、監視開始、タブ変更、Premium購入、同意変更で広告を取り除く。アラーム解除だけでは再表示しない。
+- UMPで同意状態を確認してから広告SDKを初期化。必要な同意・選択変更の画面は設定から本人が開く。広告通信が失敗しても検知は継続して使える。
+- 詳細と実機確認手順: [広告と同意の実装](docs/ads-and-consent.md)。既存の買い切り料金・販売設定は変更していない。
+
+自動テスト109件成功、静的解析指摘なし、v1.8.2 debug APKビルド成功。実機の広告ビュー・地域別フォーム・購入復元の検証とストア公開は未実施。収益・継続率への効果は未測定。
+
+Version 1.8.2 limits banners to voluntarily opened History while monitoring and
+timers are stopped. Ads are disposed on backgrounding or activity changes;
+interstitials are removed. UMP consent is checked before ad requests, and required
+forms are opened explicitly from settings. Monitoring never waits for ads or
+consent. Automated tests pass; device checks and store release are still pending.

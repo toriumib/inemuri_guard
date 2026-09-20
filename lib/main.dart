@@ -34,10 +34,6 @@ Future<void> main() async {
   await sleepLog.load();
 
   final adService = AdService();
-  // 広告SDKの初期化は待たない。Play servicesが不調な環境で
-  // MobileAds.initialize() が戻らなくなり、通知もUIも始動しないのを
-  // エミュレータで確認した。広告は準備できたものから載る。
-  unawaited(adService.init().catchError((_) {}));
 
   final notifications = NotificationService();
   await notifications.init();
@@ -115,7 +111,7 @@ class InemuriGuardApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: hydration),
         ChangeNotifierProvider.value(value: nudge),
         ChangeNotifierProvider.value(value: car),
-        Provider.value(value: adService),
+        ChangeNotifierProvider.value(value: adService),
         Provider.value(value: notifications),
         ChangeNotifierProvider(create: (_) => AlarmService(notifications)),
         ChangeNotifierProvider(create: (_) => DrowsinessDetector()),

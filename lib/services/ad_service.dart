@@ -1,74 +1,182 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-/// Ad unit IDs.
-///
-/// release は AdMob コンソールで発行した本番ユニット(居眠りガード、アプリID
-/// ca-app-pub-6744940157577324~5400800759)。debug は Google 公開のテストIDの
-/// まま。テスト端末では AdMob コンソールのテストデバイス登録か
-/// `flutter.ads_removed` フラグで広告を消すこと。
 class AdIds {
   static String get bannerUnitId => kReleaseMode
       ? 'ca-app-pub-6744940157577324/9148474078'
       : 'ca-app-pub-3940256099942544/6300978111'; // Google test banner
-
-  static String get interstitialUnitId => kReleaseMode
-      ? 'ca-app-pub-6744940157577324/5209229060'
-      : 'ca-app-pub-3940256099942544/1033173712'; // Google test interstitial
 }
 
-/// Thin wrapper around google_mobile_ads. Banner/interstitial only — no
-/// rewarded ad, since nothing in this app is gated behind "watch a video".
-class AdService {
-  InterstitialAd? _interstitial;
-  int _sessionActions = 0;
+class AdConsentSnapshot {
+  const AdConsentSnapshot({
+    this.canRequestAds = false,
+    this.needsForm = false,
+    this.privacyOptionsRequired = false,
+  });
 
-  Future<void> init() async {
+  final bool canRequestAds;
+  final bool needsForm;
+  final bool privacyOptionsRequired;
+}
+
+/// SDK boundary. Monitoring never awaits this service or depends on its result.
+class AdConsentGateway {
+  Future<void> update() {
+    final result = Completer<void>();
+    ConsentInformation.instance.requestConsentInfoUpdate(
+      ConsentRequestParameters(),
+      () => result.complete(),
+      (error) => result.completeError(error),
+    );
+    return result.future;
+  }
+
+  Future<AdConsentSnapshot> read() async => AdConsentSnapshot(
+    canRequestAds: await ConsentInformation.instance.canRequestAds(),
+    needsForm:
+        await ConsentInformation.instance.getConsentStatus() ==
+        ConsentStatus.required,
+    privacyOptionsRequired:
+        await ConsentInformation.instance
+            .getPrivacyOptionsRequirementStatus() ==
+        PrivacyOptionsRequirementStatus.required,
+  );
+
+  Future<ConsentForm> loadForm() async {
+    if (!await ConsentInformation.instance.isConsentFormAvailable()) {
+      throw StateError('Consent form is unavailable');
+    }
+    final result = Completer<ConsentForm>();
+    ConsentForm.loadConsentForm(result.complete, result.completeError);
+    return result.future;
+  }
+
+  Future<void> showOptions() async {
+    FormError? failure;
+    await ConsentForm.showPrivacyOptionsForm((error) => failure = error);
+    if (failure != null) throw failure!;
+  }
+}
+
+/// Only banners are used. Consent forms are opened by an explicit settings tap,
+/// never by app launch, starting monitoring, or dismissing an alarm.
+class AdService extends ChangeNotifier {
+  AdService({AdConsentGateway? consent, Future<void> Function()? initializeAds})
+    : _consent = consent ?? AdConsentGateway(),
+      _initializeAds = initializeAds ?? _initializeSdk;
+
+  static Future<void> _initializeSdk() async {
     await MobileAds.instance.initialize();
-    _loadInterstitial();
   }
 
-  void _loadInterstitial() {
-    InterstitialAd.load(
-      adUnitId: AdIds.interstitialUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) => _interstitial = ad,
-        onAdFailedToLoad: (_) => _interstitial = null,
-      ),
-    );
+  final AdConsentGateway _consent;
+  final Future<void> Function() _initializeAds;
+  AdConsentSnapshot _snapshot = const AdConsentSnapshot();
+  Future<void>? _initialization;
+  Future<void>? _sdkInitialization;
+  bool _disposed = false;
+  bool busy = false;
+  bool hasError = false;
+  int _revision = 0;
+
+  bool get canRequestAds => !busy && !hasError && _snapshot.canRequestAds;
+  bool get needsForm => _snapshot.needsForm;
+  bool get privacyOptionsRequired => _snapshot.privacyOptionsRequired;
+
+  Future<void> init() => _initialization ??= refreshConsent();
+
+  Future<void> refreshConsent() async {
+    if (busy || _disposed) return;
+    busy = true;
+    hasError = false;
+    _revision++;
+    _notify();
+    try {
+      await _consent.update().timeout(const Duration(seconds: 10));
+      _snapshot = await _consent.read();
+    } catch (_) {
+      // Fail closed; no application-owned cached consent or tracking fallback.
+      hasError = true;
+    } finally {
+      busy = false;
+      _notify();
+    }
   }
 
-  BannerAd createBanner({required VoidCallback onLoaded}) {
-    final banner = BannerAd(
-      adUnitId: AdIds.bannerUnitId,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(onAdLoaded: (_) => onLoaded()),
-    );
-    banner.load();
-    return banner;
+  Future<void> openPrivacyOptions({required bool Function() canPresent}) async {
+    if (busy || _disposed || !canPresent()) return;
+    if (hasError) {
+      await refreshConsent();
+      if (hasError || _disposed || !canPresent()) return;
+    }
+    if (!needsForm && !privacyOptionsRequired) return;
+    busy = true;
+    _revision++;
+    _notify();
+    ConsentForm? form;
+    try {
+      if (needsForm) {
+        form = await _consent.loadForm();
+        // A shortcut, alarm, tab change or app pause may occur during loading.
+        if (_disposed || !canPresent()) return;
+        final dismissed = Completer<void>();
+        form.show((error) {
+          if (error == null) {
+            dismissed.complete();
+          } else {
+            dismissed.completeError(error);
+          }
+        });
+        await dismissed.future;
+      } else {
+        if (_disposed || !canPresent()) return;
+        await _consent.showOptions();
+      }
+      _snapshot = await _consent.read();
+      hasError = false;
+    } catch (_) {
+      hasError = true;
+    } finally {
+      if (form != null) {
+        try {
+          await form.dispose();
+        } catch (_) {
+          // A native view cleanup failure must not affect monitoring.
+        }
+      }
+      busy = false;
+      _notify();
+    }
   }
 
-  /// Call after a nap finishes or an alarm is dismissed — every 3rd time,
-  /// to keep it from ever interrupting the alarm itself.
-  void maybeShowInterstitial() {
-    _sessionActions++;
-    if (_sessionActions % 3 != 0) return;
-    final ad = _interstitial;
-    if (ad == null) return;
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (a) {
-        a.dispose();
-        _interstitial = null;
-        _loadInterstitial();
-      },
-      onAdFailedToShowFullScreenContent: (a, _) {
-        a.dispose();
-        _interstitial = null;
-        _loadInterstitial();
-      },
-    );
-    ad.show();
+  Future<bool> prepareBanner({required bool Function() stillEligible}) async {
+    if (_disposed || !canRequestAds || !stillEligible()) return false;
+    final revision = _revision;
+    try {
+      // Deduplicated and lazy: premium users and monitoring screens never
+      // initialize the advertising SDK or preload an unused full-screen ad.
+      await (_sdkInitialization ??= _initializeAds());
+      if (_disposed || revision != _revision || !stillEligible()) return false;
+      final current = await _consent.read();
+      return !_disposed &&
+          revision == _revision &&
+          canRequestAds &&
+          current.canRequestAds &&
+          stillEligible();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

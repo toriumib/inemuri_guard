@@ -611,7 +611,7 @@ class _PremiumCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             for (final line in const [
-              '広告が出なくなる（下のバナーと全画面）',
+              '記録画面の広告が出なくなる',
               'テーマが全部使える',
               '「呼ばれたら起こす」を差出人・件名で絞り込める',
             ])

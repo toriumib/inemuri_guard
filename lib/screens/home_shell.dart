@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import '../services/ad_service.dart';
@@ -20,6 +21,7 @@ import '../theme/app_theme.dart';
 import '../widgets/status_hero.dart';
 import '../widgets/sensitivity_control.dart';
 import '../widgets/wake_up_overlay.dart';
+import '../widgets/safe_ad_panel.dart';
 import 'detect_screen.dart';
 import 'improve_screen.dart';
 import 'log_screen.dart';
@@ -38,7 +40,6 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
-  BannerAd? _banner;
   Future<void> _consumeShortcut() async {
     if (!mounted) return;
     final requested = await context
@@ -95,6 +96,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     context.read<DeviceReadiness>().onStartRequested = _consumeShortcut;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // Update consent after the terms gate; do not show a form or load ads.
+        unawaited(context.read<AdService>().init());
         context.read<DeviceReadiness>().refresh();
         _consumeShortcut();
       }
@@ -139,11 +142,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       }
     };
     final stats = context.read<StatsService>();
-    if (!stats.isPremium) {
-      _banner = context.read<AdService>().createBanner(
-        onLoaded: () => setState(() {}),
-      );
-    }
     // 開いた瞬間から見張る。机に置いて開くだけで始まるのがこの道具の使い方。
     // 初回はカメラの許可ダイアログが出る。断られたら denied になるだけで、
     // 次回以降は「検知を開始」を押してもらう（毎回ダイアログを出し続けない）。
@@ -162,7 +160,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _banner?.dispose();
     super.dispose();
   }
 
@@ -224,14 +221,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final alerts = context.watch<AlertCoordinator>();
     final stats = context.watch<StatsService>();
     final log = context.watch<SleepLogService>();
-
-    // Tear the banner down for good once ads are bought off, rather than just
-    // hiding it — otherwise it keeps loading and costing bandwidth.
-    if (stats.isPremium && _banner != null) {
-      final banner = _banner;
-      _banner = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) => banner?.dispose());
-    }
+    final alarm = context.watch<AlarmService>();
 
     final anyAlarming = alerts.isAlarming;
     final canDismiss = anyAlarming;
@@ -284,12 +274,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 Expanded(
                   child: IndexedStack(index: _index, children: _pages),
                 ),
-                if (_banner != null && !stats.isPremium)
-                  SizedBox(
-                    width: _banner!.size.width.toDouble(),
-                    height: _banner!.size.height.toDouble(),
-                    child: AdWidget(ad: _banner!),
+                SafeAdPanel(
+                  historySelected: _index == 2,
+                  settingsSelected: _index == 4,
+                  idle: monitoringAllowsAds(
+                    detector: detector.state,
+                    microphone: breathing.state,
+                    nap: nap.phase,
+                    pomodoro: pomo.phase,
+                    alarming: anyAlarming || alarm.isFiring,
                   ),
+                  setupCompleted: stats.setupCompleted,
+                  premium: stats.isPremium,
+                  isIdleNow: () => monitoringAllowsAds(
+                    detector: detector.state,
+                    microphone: breathing.state,
+                    nap: nap.phase,
+                    pomodoro: pomo.phase,
+                    alarming: alerts.isAlarming || alarm.isFiring,
+                  ),
+                ),
               ],
             ),
           ),
