@@ -154,11 +154,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- 本番の AdMob アプリID(居眠りガード)。debug もこの ID で動く。
-             広告ユニットIDは lib/services/ad_service.dart。 -->
+        <!-- AdMob アプリ ID。本番の値は android/admob.properties（git 管理外）から
+             build.gradle.kts が差し込む。無ければ Google の公開サンプル ID。 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-6744940157577324~5400800759"/>
+            android:value="${admobAppId}"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

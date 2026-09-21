@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 脆弱性の連絡 / Security
+    url: https://github.com/toriumib/inemuri_guard/blob/master/SECURITY.md
+    about: 映像・音声が端末外へ出る経路などは公開 Issue ではなくメールで

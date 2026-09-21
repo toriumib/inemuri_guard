@@ -17,6 +17,12 @@ val keystoreProperties = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+// AdMob のアプリ ID も同じ形で git 管理外（admob.properties）。無ければ Google の
+// 公開サンプル ID にして、フォークしたビルドが本番の広告枠を使わないようにする。
+val admobAppId: String = Properties().apply {
+    val f = rootProject.file("admob.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}.getProperty("appId") ?: "ca-app-pub-3940256099942544~3347511713"
 val hasReleaseSigning = keystoreProperties.getProperty("storeFile") != null &&
     rootProject.file(keystoreProperties.getProperty("storeFile") ?: "").exists()
 
@@ -39,6 +45,9 @@ android {
         // Play Console 側で先に登録されたパッケージ名に合わせる。
         // namespace はそのまま(コードの Kotlin パッケージとは無関係)。
         applicationId = "com.stop.sleeping"
+        // AdMob のアプリ ID。android/admob.properties（git 管理外）に appId= があればそれ、
+        // 無ければ Google の公開サンプル ID（フォークしたビルドが本番枠を使わないように）。
+        manifestPlaceholders["admobAppId"] = admobAppId
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

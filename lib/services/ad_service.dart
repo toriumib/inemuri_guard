@@ -3,9 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+/// 広告ユニット ID。本番の ID はリポジトリに置かず、ビルド時に
+/// `--dart-define=ADMOB_BANNER_UNIT_ID=...` で渡す（tools/build-release.ps1）。
+/// 渡されなければ Google の公開テスト ID で動く。フォークした人の
+/// ビルドが本番の広告枠を使ってしまわないようにするため。
 class AdIds {
-  static String get bannerUnitId => kReleaseMode
-      ? 'ca-app-pub-6744940157577324/9148474078'
+  static const _banner = String.fromEnvironment('ADMOB_BANNER_UNIT_ID');
+  static String get bannerUnitId => kReleaseMode && _banner.isNotEmpty
+      ? _banner
       : 'ca-app-pub-3940256099942544/6300978111'; // Google test banner
 }
 

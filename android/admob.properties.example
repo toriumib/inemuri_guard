@@ -1,0 +1,3 @@
+# コピーして android/admob.properties に。自分の AdMob の値を入れる。無ければ Google のテスト ID で動く。
+appId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
+bannerUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ

@@ -66,3 +66,7 @@ android/key.properties
 
 # Kotlin compiler session cache
 /android/.kotlin/
+
+# 本番の広告 ID と合言葉（公開しない）
+android/admob.properties
+tools/release.env

@@ -784,7 +784,9 @@ class _ActionTile extends StatelessWidget {
 
 /// 🛠 開発者モードの合言葉。動作確認と画面撮影のためのもの。
 /// なまえがお（同じ開発者の別アプリ）と同じ仕組みで揃えてある。
-const String _kDevPassphrase = 'Toriumi';
+/// 開発者モードの合言葉。公開リポジトリに書かないので、ビルド時に
+/// `--dart-define=DEV_PASSPHRASE=...` で渡す。無ければ開発者モードは開かない。
+const String _kDevPassphrase = String.fromEnvironment('DEV_PASSPHRASE');
 
 class _AboutCard extends StatelessWidget {
   const _AboutCard();
@@ -817,7 +819,7 @@ class _AboutCard extends StatelessWidget {
     final input = ctrl.text.trim();
     ctrl.dispose();
     if (ok != true || !context.mounted) return;
-    if (input != _kDevPassphrase) {
+    if (_kDevPassphrase.isEmpty || input != _kDevPassphrase) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('合言葉が違います')));
