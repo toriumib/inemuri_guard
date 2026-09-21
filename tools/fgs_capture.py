@@ -1,3 +1,4 @@
+import os
 """Record permission-review evidence on our Android emulator, never a phone.
 
 Commands: ui, tap TEXT, shot NAME, record NAME SECONDS, evidence NAME.
@@ -8,7 +9,7 @@ import subprocess, sys, re
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-ADB = 'C:/Users/tori/AppData/Local/Android/Sdk/platform-tools/adb.exe'
+ADB = os.environ.get('ADB', os.path.expandvars(r'%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe'))
 OUT = Path(__file__).resolve().parents[1] / 'store_assets/fgs_review'
 OUT.mkdir(parents=True, exist_ok=True)
 

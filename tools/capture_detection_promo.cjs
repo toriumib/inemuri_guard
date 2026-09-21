@@ -1,7 +1,7 @@
 // Synthetic camera footage; real production MediaPipe and real alarm UI.
 const path=require('node:path');
 const fs=require('node:fs');
-const {chromium}=require('C:/Users/tori/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const out=path.resolve(__dirname,'../store_assets/promo_detection');
 (async()=>{
  for(const [name,width,height] of [['web',960,900],['iphone-viewport',390,844]]){

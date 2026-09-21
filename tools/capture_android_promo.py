@@ -5,7 +5,8 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 import re
 
-ADB='C:/Users/tori/AppData/Local/Android/Sdk/platform-tools/adb.exe'
+import os
+ADB=os.environ.get('ADB', os.path.expandvars(r'%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe'))
 OUT=Path(__file__).resolve().parents[1]/'store_assets/promo_real'
 OUT.mkdir(exist_ok=True)
 def adb(*args):

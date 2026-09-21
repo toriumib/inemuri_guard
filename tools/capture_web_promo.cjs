@@ -2,7 +2,7 @@
 // No injected UI, face data, detection results, or private browser profile.
 const path = require('node:path');
 const fs = require('node:fs');
-const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/tori/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const out = path.resolve(__dirname, '../store_assets/promo_real');
 fs.mkdirSync(out, { recursive: true });
 (async () => {
