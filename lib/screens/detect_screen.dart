@@ -285,6 +285,7 @@ class _DetectScreenState extends State<DetectScreen>
           ),
         ),
         const WalkLightCard(),
+        const DashcamCard(),
       ],
     );
   }

@@ -250,5 +250,19 @@
   "walkLightBody": "Blinks the rear light twice a second so drivers can spot you. Unlike a reflector, it doesn't need their headlights to hit you, so it shows from the side and at angles too. Point the light toward the road and wear the phone in a chest pocket or on a strap. Don't walk while looking at the screen.",
   "walkLightStart": "Start blinking",
   "walkLightStop": "Stop blinking",
-  "walkLightUnsupported": "This device's light isn't available."
+  "walkLightUnsupported": "This device's light isn't available.",
+  "dashcamTitle": "Dashcam (experimental)",
+  "dashcamIntro": "Records the road with the rear camera in one-minute clips, keeping the newest 10 (about 10 minutes) and overwriting the oldest. A hard jolt or the Protect button keeps the previous clip and the current one from being overwritten.",
+  "dashcamOpen": "Open dashcam",
+  "dashcamStart": "Start recording",
+  "dashcamStop": "Stop recording",
+  "dashcamProtect": "Protect",
+  "dashcamProtectedNow": "Protected the clips around this moment",
+  "dashcamLocked": "Protected clips",
+  "dashcamRecent": "Recent clips (will be overwritten)",
+  "dashcamEmpty": "Nothing yet",
+  "dashcamBusy": "Drowsiness monitoring is using the camera. Only one camera can be open at a time, so stop monitoring before recording.",
+  "dashcamLimits": "Records only while this screen is open (switching apps stops it). No audio is recorded. Clips stay on this device and leave it only when you share them. There's a gap of under a second between clips. This doesn't replace a dedicated dashcam.",
+  "dashcamShare": "Share / save",
+  "dashcamDelete": "Delete"
 }

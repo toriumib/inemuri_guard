@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_language.dart';
+import '../screens/dashcam_screen.dart';
 import '../services/torch.dart';
 
 /// 夜道ライト。歩く人が車に見つけてもらうための点滅（Torch.beacon）。
@@ -33,6 +34,26 @@ class WalkLightCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// ドラレコの入口。
+class DashcamCard extends StatelessWidget {
+  const DashcamCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.videocam_outlined),
+        title: Text(context.l10n.dashcamTitle),
+        subtitle: Text(context.l10n.dashcamOpen),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const DashcamScreen()),
+        ),
       ),
     );
   }

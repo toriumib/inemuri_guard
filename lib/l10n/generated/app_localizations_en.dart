@@ -571,4 +571,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get walkLightUnsupported => 'This device\'s light isn\'t available.';
+
+  @override
+  String get dashcamTitle => 'Dashcam (experimental)';
+
+  @override
+  String get dashcamIntro =>
+      'Records the road with the rear camera in one-minute clips, keeping the newest 10 (about 10 minutes) and overwriting the oldest. A hard jolt or the Protect button keeps the previous clip and the current one from being overwritten.';
+
+  @override
+  String get dashcamOpen => 'Open dashcam';
+
+  @override
+  String get dashcamStart => 'Start recording';
+
+  @override
+  String get dashcamStop => 'Stop recording';
+
+  @override
+  String get dashcamProtect => 'Protect';
+
+  @override
+  String get dashcamProtectedNow => 'Protected the clips around this moment';
+
+  @override
+  String get dashcamLocked => 'Protected clips';
+
+  @override
+  String get dashcamRecent => 'Recent clips (will be overwritten)';
+
+  @override
+  String get dashcamEmpty => 'Nothing yet';
+
+  @override
+  String get dashcamBusy =>
+      'Drowsiness monitoring is using the camera. Only one camera can be open at a time, so stop monitoring before recording.';
+
+  @override
+  String get dashcamLimits =>
+      'Records only while this screen is open (switching apps stops it). No audio is recorded. Clips stay on this device and leave it only when you share them. There\'s a gap of under a second between clips. This doesn\'t replace a dedicated dashcam.';
+
+  @override
+  String get dashcamShare => 'Share / save';
+
+  @override
+  String get dashcamDelete => 'Delete';
 }

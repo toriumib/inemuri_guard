@@ -1111,6 +1111,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This device\'s light isn\'t available.'**
   String get walkLightUnsupported;
+
+  /// No description provided for @dashcamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashcam (experimental)'**
+  String get dashcamTitle;
+
+  /// No description provided for @dashcamIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Records the road with the rear camera in one-minute clips, keeping the newest 10 (about 10 minutes) and overwriting the oldest. A hard jolt or the Protect button keeps the previous clip and the current one from being overwritten.'**
+  String get dashcamIntro;
+
+  /// No description provided for @dashcamOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open dashcam'**
+  String get dashcamOpen;
+
+  /// No description provided for @dashcamStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start recording'**
+  String get dashcamStart;
+
+  /// No description provided for @dashcamStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop recording'**
+  String get dashcamStop;
+
+  /// No description provided for @dashcamProtect.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect'**
+  String get dashcamProtect;
+
+  /// No description provided for @dashcamProtectedNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected the clips around this moment'**
+  String get dashcamProtectedNow;
+
+  /// No description provided for @dashcamLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected clips'**
+  String get dashcamLocked;
+
+  /// No description provided for @dashcamRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent clips (will be overwritten)'**
+  String get dashcamRecent;
+
+  /// No description provided for @dashcamEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet'**
+  String get dashcamEmpty;
+
+  /// No description provided for @dashcamBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Drowsiness monitoring is using the camera. Only one camera can be open at a time, so stop monitoring before recording.'**
+  String get dashcamBusy;
+
+  /// No description provided for @dashcamLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Records only while this screen is open (switching apps stops it). No audio is recorded. Clips stay on this device and leave it only when you share them. There\'s a gap of under a second between clips. This doesn\'t replace a dedicated dashcam.'**
+  String get dashcamLimits;
+
+  /// No description provided for @dashcamShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share / save'**
+  String get dashcamShare;
+
+  /// No description provided for @dashcamDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get dashcamDelete;
 }
 
 class _AppLocalizationsDelegate

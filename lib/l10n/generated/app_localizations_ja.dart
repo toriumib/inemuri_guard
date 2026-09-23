@@ -543,4 +543,49 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get walkLightUnsupported => 'この端末ではライトを使えません。';
+
+  @override
+  String get dashcamTitle => 'ドラレコ（試験的）';
+
+  @override
+  String get dashcamIntro =>
+      '背面カメラで前を 1 分ずつ録り、新しい 10 本（約 10 分）を残して古いものから上書きします。強い衝撃を感じるか「保護」を押すと、直前の 1 本と録画中の 1 本を上書きから外します。';
+
+  @override
+  String get dashcamOpen => 'ドラレコを開く';
+
+  @override
+  String get dashcamStart => '録画を始める';
+
+  @override
+  String get dashcamStop => '録画を止める';
+
+  @override
+  String get dashcamProtect => '保護';
+
+  @override
+  String get dashcamProtectedNow => 'この前後を保護しました';
+
+  @override
+  String get dashcamLocked => '保護した映像';
+
+  @override
+  String get dashcamRecent => '最近の映像（上書きされます）';
+
+  @override
+  String get dashcamEmpty => 'まだありません';
+
+  @override
+  String get dashcamBusy =>
+      '居眠りの見張りがカメラを使っています。カメラは同時に 1 つしか開けないので、見張りを止めてから録画してください。';
+
+  @override
+  String get dashcamLimits =>
+      '画面を開いている間だけ録画します（ほかのアプリに切り替えると止まります）。音は録りません。映像はこの端末の中だけに保存し、共有したときだけ外へ出ます。区切りごとに 1 秒弱の抜けがあります。専用のドライブレコーダーの代わりにはなりません。';
+
+  @override
+  String get dashcamShare => '共有・保存';
+
+  @override
+  String get dashcamDelete => '削除';
 }
