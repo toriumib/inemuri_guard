@@ -14,6 +14,7 @@ import '../widgets/sensitivity_control.dart';
 import '../widgets/monitoring_status.dart';
 import '../widgets/first_use_card.dart';
 import '../widgets/quick_setup_card.dart';
+import '../widgets/walk_light_card.dart';
 
 /// Daily use needs no configuration. Diagnostics and optional modes stay folded.
 class DetectScreen extends StatefulWidget {
@@ -283,6 +284,7 @@ class _DetectScreenState extends State<DetectScreen>
             ],
           ),
         ),
+        const WalkLightCard(),
       ],
     );
   }

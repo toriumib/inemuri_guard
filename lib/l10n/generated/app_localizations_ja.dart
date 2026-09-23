@@ -527,4 +527,20 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get voiceStopHint =>
       '鳴っている間に「起きた」「止めて」と言うと止まります。端末の音声認識を使い、提供元へ音声が送られる場合があります。呼吸音の検知中は使えません。';
+
+  @override
+  String get walkLightTitle => '夜道ライト（歩くとき）';
+
+  @override
+  String get walkLightBody =>
+      '外側のライトを 2 秒に 4 回点滅させ、車からあなたを見つけやすくします。反射材と違い、車のライトが当たらない横や斜めからも見えます。ライトを車道側へ向けて、胸ポケットやストラップで身につけてください。画面を見ながら歩かないでください。';
+
+  @override
+  String get walkLightStart => '点滅を始める';
+
+  @override
+  String get walkLightStop => '点滅を止める';
+
+  @override
+  String get walkLightUnsupported => 'この端末ではライトを使えません。';
 }

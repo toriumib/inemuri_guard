@@ -245,5 +245,10 @@
   "termsRequired": "You must agree to use the app.",
   "voiceStopTitle": "Stop by voice",
   "voiceUnavailable": "Speech recognition is unavailable for this language. Use the on-screen button, volume keys or notification stop button.",
-  "voiceStopHint": "Say “stop” or “I’m awake” while the alarm is ringing. This uses your device’s speech recognition service, which may send audio to its provider. Unavailable while breathing detection uses the microphone."
+  "voiceStopHint": "Say “stop” or “I’m awake” while the alarm is ringing. This uses your device’s speech recognition service, which may send audio to its provider. Unavailable while breathing detection uses the microphone.",
+  "walkLightTitle": "Night walk light",
+  "walkLightBody": "Blinks the rear light twice a second so drivers can spot you. Unlike a reflector, it doesn't need their headlights to hit you, so it shows from the side and at angles too. Point the light toward the road and wear the phone in a chest pocket or on a strap. Don't walk while looking at the screen.",
+  "walkLightStart": "Start blinking",
+  "walkLightStop": "Stop blinking",
+  "walkLightUnsupported": "This device's light isn't available."
 }

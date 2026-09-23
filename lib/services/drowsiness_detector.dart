@@ -138,7 +138,7 @@ class DrowsinessDetector extends ChangeNotifier {
   Duration postureOffFor = Duration.zero;
   DateTime? _postureOffSince;
 
-  /// 横（左右）を向いたまま続いた時間。車モードのときだけ意味を持つ。
+  /// 前から目を離したまま続いた時間（横を向く・手元を見る）。車モードのときだけ意味を持つ。
   Duration lookAwayFor = Duration.zero;
   DateTime? _lookAwaySince;
 
@@ -172,7 +172,9 @@ class DrowsinessDetector extends ChangeNotifier {
 
   static const postureDeg = 22.0;
   static const lookAwayDeg = 35.0;
-  static const lookAwayAfter = Duration(seconds: 3);
+  /// 前から目を離して 2 秒。100-Car 研究（Klauer ら 2006, NHTSA）で、
+  /// 前方から 2 秒を超えて目を離すと事故・ニアミスの危険がおよそ倍になる。
+  static const lookAwayAfter = Duration(seconds: 2);
   static const lookAwayCooldown = Duration(seconds: 10);
   static const eyesUnreadableAfter = Duration(seconds: 10);
   static const seenOpenAbove = 0.5;
@@ -686,8 +688,11 @@ class DrowsinessDetector extends ChangeNotifier {
       }
     }
 
-    // ── 脇見（車モードのみ） ──
-    final away = carMode && dYaw >= lookAwayDeg;
+    // ── 脇見・手元見（車モードのみ） ──
+    // 手元（膝の上のスマホ・落とした物）を見るのは俯き。ML Kit の X は上が正。
+    // 居眠りの頭の落下も同じ向きだが、2 秒で一度知らせるのはどちらにも正しい。
+    final lookingDown = pitchDeg - _pitchBase! <= -postureDeg;
+    final away = carMode && (dYaw >= lookAwayDeg || lookingDown);
     if (!away || suppressed) {
       _lookAwaySince = null;
       lookAwayFor = Duration.zero;

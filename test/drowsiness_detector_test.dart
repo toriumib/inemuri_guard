@@ -307,7 +307,7 @@ void _postureTests() {
     expect(d.alarmFiring, isTrue, reason: '基準が -40 に寄っていたら鳴らなくなる');
   });
 
-  test('脇見は車モードのときだけ。3秒で知らせ、向き直ると消える', () {
+  test('脇見は車モードのときだけ。2秒で知らせ、向き直ると消える', () {
     feedPose(20, 0, 0, 0);
     feedPose(25, 0, 45, 0); // 約4秒 横を向く（机）
     expect(d.lookAwayAlert, isFalse, reason: '机では横を見るのが普通');
@@ -317,6 +317,26 @@ void _postureTests() {
     expect(d.lookAwayAlert, isTrue);
     expect(d.alarmFiring, isFalse, reason: '脇見はアラームではなく知らせ');
     feedPose(3, 0, 0, 0);
+    expect(d.lookAwayAlert, isFalse);
+  });
+
+  test('車では手元を見る（俯き）も脇見。2秒で知らせ、机では知らせない', () {
+    feedPose(20, 0, 0, 0);
+    feedPose(15, -30, 0, 0); // 約2.4秒 手元を見る（机）
+    expect(d.lookAwayAlert, isFalse, reason: '机では手元を見るのが普通');
+    d.carMode = true;
+    feedPose(10, 0, 0, 0); // 前を向く
+    feedPose(10, -30, 0, 0); // 約1.6秒
+    expect(d.lookAwayAlert, isFalse, reason: '2秒未満はまだ');
+    feedPose(5, -30, 0, 0); // 通算 約2.4秒
+    expect(d.lookAwayAlert, isTrue);
+    expect(d.alarmFiring, isFalse);
+  });
+
+  test('車で上を見る（仰け反り）は手元見ではない', () {
+    d.carMode = true;
+    feedPose(20, 0, 0, 0);
+    feedPose(15, 30, 0, 0);
     expect(d.lookAwayAlert, isFalse);
   });
 

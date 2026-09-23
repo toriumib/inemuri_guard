@@ -50,7 +50,28 @@ class Torch {
     });
   }
 
+  /// 夜道ライト（歩くとき）。点いているか。
+  static final beaconOn = ValueNotifier<bool>(false);
+
+  /// 夜道ライト。車のライトが当たって初めて光る反射材と違い、自分で光るので
+  /// 横や斜めからでも見える。点滅は自転車の後部灯と同じく 2Hz（200ms 点・
+  /// 300ms 消）。点けっぱなしより目に留まり、電池も 4 割で済む。
+  /// アラームの点滅と同じタイマーを使うので、どちらか先に始めたほうが続く。
+  static Future<void> beacon() async {
+    if (!isSupported || _timer != null) return;
+    var tick = 0;
+    beaconOn.value = true;
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      final lit = tick % 5 < 2;
+      tick++;
+      if (lit == _lit) return;
+      _lit = lit;
+      unawaited(_set(lit));
+    });
+  }
+
   static Future<void> stop() async {
+    beaconOn.value = false;
     _timer?.cancel();
     _timer = null;
     if (_lit) {

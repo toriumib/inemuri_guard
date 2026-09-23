@@ -1081,6 +1081,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Say “stop” or “I’m awake” while the alarm is ringing. This uses your device’s speech recognition service, which may send audio to its provider. Unavailable while breathing detection uses the microphone.'**
   String get voiceStopHint;
+
+  /// No description provided for @walkLightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Night walk light'**
+  String get walkLightTitle;
+
+  /// No description provided for @walkLightBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Blinks the rear light twice a second so drivers can spot you. Unlike a reflector, it doesn\'t need their headlights to hit you, so it shows from the side and at angles too. Point the light toward the road and wear the phone in a chest pocket or on a strap. Don\'t walk while looking at the screen.'**
+  String get walkLightBody;
+
+  /// No description provided for @walkLightStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start blinking'**
+  String get walkLightStart;
+
+  /// No description provided for @walkLightStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop blinking'**
+  String get walkLightStop;
+
+  /// No description provided for @walkLightUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This device\'s light isn\'t available.'**
+  String get walkLightUnsupported;
 }
 
 class _AppLocalizationsDelegate

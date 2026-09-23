@@ -164,6 +164,9 @@ void main() {
     await tester.tap(find.text('Start monitoring'));
     await tester.pumpAndSettle();
     expect(find.text('Stop monitoring'), findsOneWidget);
+    // 一覧が長いと先頭のカードは描画範囲の外に出るので、先頭へ戻す。
+    await tester.drag(find.byType(ListView), const Offset(0, 3000));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Check the sound'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Check the sound'));
