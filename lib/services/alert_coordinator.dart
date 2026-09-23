@@ -19,6 +19,7 @@ class AlertCoordinator extends ChangeNotifier {
     this.onEpisode,
     this.onLookAway,
     this.onRestAdvice,
+    this.onUnresponsive,
   }) {
     detector.addListener(_schedule);
     breathing.addListener(_schedule);
@@ -32,6 +33,25 @@ class AlertCoordinator extends ChangeNotifier {
   final void Function(AlertSource source)? onEpisode;
   final void Function()? onLookAway;
   final void Function()? onRestAdvice;
+
+  /// ドライバー異常時対応（EDSS の考え方）。車モードで、居眠りのアラーム
+  /// （目・姿勢・寝息）が [unresponsiveAfter] 鳴り続けても止まらない＝反応が無い。
+  /// 1 回の鳴動につき一度だけ呼ぶ。
+  final void Function()? onUnresponsive;
+  static const unresponsiveAfter = Duration(seconds: 20);
+  DateTime? _drowsySince;
+  bool _escalated = false;
+  Timer? _watchdog;
+
+  /// 鳴り続けている時間を見て、反応が無ければ [onUnresponsive] を呼ぶ。
+  /// 1 秒ごとのタイマーから呼ぶ。テストでは時刻を渡して直接呼ぶ。
+  void checkUnresponsive(DateTime now) {
+    final since = _drowsySince;
+    if (since == null || _escalated || !detector.carMode) return;
+    if (now.difference(since) < unresponsiveAfter) return;
+    _escalated = true;
+    onUnresponsive?.call();
+  }
   Set<AlertSource> _active = {};
   Set<AlertSource> get active => Set.unmodifiable(_active);
   bool get isAlarming => _active.isNotEmpty;
@@ -85,6 +105,24 @@ class AlertCoordinator extends ChangeNotifier {
       if (nap.phase == NapPhase.done) AlertSource.nap,
       if (_nudge != null) AlertSource.nudge,
     };
+    final drowsy = next.any(
+      (s) =>
+          s == AlertSource.eyes ||
+          s == AlertSource.posture ||
+          s == AlertSource.breathing,
+    );
+    if (drowsy) {
+      _drowsySince ??= DateTime.now();
+      _watchdog ??= Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => checkUnresponsive(DateTime.now()),
+      );
+    } else {
+      _drowsySince = null;
+      _escalated = false;
+      _watchdog?.cancel();
+      _watchdog = null;
+    }
     final added = next.difference(_active);
     final changed = !setEquals(next, _active);
     _active = next;
@@ -147,6 +185,7 @@ class AlertCoordinator extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _watchdog?.cancel();
     detector.removeListener(_schedule);
     breathing.removeListener(_schedule);
     nap.removeListener(_schedule);

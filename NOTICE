@@ -7,5 +7,7 @@ per pubspec.lock; Google ML Kit under the Google APIs Terms of Service.
 
 assets/models/ssd_mobilenet_v1_coco.tflite: COCO SSD MobileNet v1 (quantized),
 from the TensorFlow Lite examples (TensorFlow Models), Apache License 2.0.
+assets/models/efficientdet_lite2_coco.tflite: EfficientDet-Lite2 detection
+(TensorFlow Hub / Kaggle Models, tensorflow/efficientdet), Apache License 2.0.
 Speed-limit and speed-camera data: (c) OpenStreetMap contributors, ODbL,
 fetched at runtime and not bundled.

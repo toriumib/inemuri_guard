@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 /// 道路の判定（前方衝突・車間距離・前の車の発進・後ろから来る車・信号の色・オービス）。
 /// カメラやモデルに依らない純粋な計算だけを置き、テストで確かめる。
@@ -56,6 +57,70 @@ RoadObject? pickLead(List<RoadObject> objs) {
   return best;
 }
 
+/// 2 つの枠の重なり（IoU、0〜1）。
+double iou(RoadObject a, RoadObject b) {
+  final l = math.max(a.left, b.left), r = math.min(a.right, b.right);
+  final t = math.max(a.top, b.top), btm = math.min(a.bottom, b.bottom);
+  if (r <= l || btm <= t) return 0;
+  final inter = (r - l) * (btm - t);
+  return inter / (a.area + b.area - inter);
+}
+
+/// 前の車を「同じ車」として追い続ける。毎回いちばん大きい車を選び直すと、
+/// 隣の車線の車に乗り移った瞬間に幅が急に変わり、誤報の元になる。
+/// 前回の枠と重なる（IoU > [keepIou]）車があればそれを選び続け、無ければ選び直して
+/// [switched] を立てる（TTC の履歴を捨てる合図）。
+///
+/// 遠い車は、見つかるフレームと見つからないフレームが交互に来る。1 回見失っただけで
+/// 履歴を捨てると TTC がいつまでも出ないので、[graceMisses] 回（毎秒 4 回で約 0.5 秒）
+/// までは同じ車がまだそこにいるとみなす（[lost] は立てない）。
+class LeadSelector {
+  static const keepIou = 0.3;
+  static const minScore = 0.4;
+  static const graceMisses = 2;
+  RoadObject? _prev;
+  int _misses = 0;
+  bool switched = false;
+
+  /// 見失って猶予も過ぎた（TTC の履歴を捨てる合図）。
+  bool lost = false;
+
+  RoadObject? pick(List<RoadObject> objs) {
+    final cands = [
+      for (final o in objs)
+        if (o.score >= minScore) o,
+    ];
+    RoadObject? next;
+    if (_prev != null) {
+      var best = keepIou;
+      for (final o in cands) {
+        if (!o.kind.isVehicle) continue;
+        final v = iou(o, _prev!);
+        if (v > best) {
+          best = v;
+          next = o;
+        }
+      }
+    }
+    if (next != null) {
+      switched = false;
+    } else {
+      next = pickLead(cands);
+      switched = next != null;
+    }
+    if (next == null) {
+      _misses++;
+      lost = _misses > graceMisses;
+      if (lost) _prev = null;
+    } else {
+      _misses = 0;
+      lost = false;
+      _prev = next;
+    }
+    return next;
+  }
+}
+
 /// いちばん大きい車（向きを問わない）。歩行モードの後方監視用。
 RoadObject? pickLargestVehicle(List<RoadObject> objs) {
   RoadObject? best;
@@ -81,18 +146,38 @@ class TtcTracker {
   double? feed(double width, DateTime now) {
     if (_hist.isNotEmpty) {
       final jump = (width - _hist.last.$2).abs() / _hist.last.$2;
-      // 1 フレームで 4 割も変わるのは別の車に乗り換えたとき。
-      if (jump > 0.4) _hist.clear();
+      // 1 フレームで 8 割も変わるのは別の車に乗り換えたとき。衝突の直前は
+      // 本当に 4〜5 割ずつ大きくなるので、そこで捨てないよう緩めに置く
+      // （乗り換えは LeadSelector が重なりで見分ける）。
+      if (jump > 0.8) _hist.clear();
     }
     _hist.add((now, width));
     _hist.removeWhere((e) => now.difference(e.$1) > window);
+    // 毎秒 4 回なら 3 点＝0.5 秒。4 点待つと、それだけで 0.75 秒遅れる。
     if (_hist.length < 3) return null;
-    final first = _hist.first;
-    final dt = now.difference(first.$1).inMilliseconds / 1000;
-    if (dt < 0.4) return null;
-    final rate = (width - first.$2) / dt;
-    if (rate <= 0) return null;
-    return width / rate;
+    final dt = now.difference(_hist.first.$1).inMilliseconds / 1000;
+    if (dt < 0.45) return null;
+    // 近づく車の見かけの幅 w は距離 d に反比例する。だから ln w の時間の傾きは
+    // v/d ＝ 1/TTC そのもの。窓の中の全点に直線を当てはめ（最小二乗）、
+    // 1 フレームの揺れで跳ねないようにする。
+    // 当てはめで出るのは「窓の真ん中の時点」の TTC なので、そこから今までの
+    // 経過時間を引いて今の TTC に直す（等速で近づくなら TTC は 1 秒に 1 秒ずつ減る）。
+    var st = 0.0, sy = 0.0, stt = 0.0, sty = 0.0;
+    for (final (t, w) in _hist) {
+      final x = t.difference(_hist.first.$1).inMilliseconds / 1000;
+      final y = math.log(w);
+      st += x;
+      sy += y;
+      stt += x * x;
+      sty += x * y;
+    }
+    final n = _hist.length.toDouble();
+    final den = n * stt - st * st;
+    if (den <= 0) return null;
+    final slope = (n * sty - st * sy) / den; // = 1/TTC（窓の真ん中）
+    if (slope <= 0) return null;
+    final now_ = 1 / slope - (dt - st / n);
+    return now_ > 0 ? now_ : 0.05;
   }
 }
 
@@ -105,9 +190,17 @@ class FcwJudge {
   DateTime? _lastAt;
   int _streak = 0;
 
-  bool feed({required double? ttc, required double width, double? speedKmh, required DateTime now}) {
+  /// [turning] 曲がっている最中（ジャイロ）。枠が横に流れて幅が乱れるので見ない。
+  bool feed({
+    required double? ttc,
+    required double width,
+    double? speedKmh,
+    bool turning = false,
+    required DateTime now,
+  }) {
     final moving = speedKmh == null || speedKmh > 10;
-    final danger = moving && ttc != null && ttc < ttcBelow && width >= minWidth;
+    final danger =
+        moving && !turning && ttc != null && ttc < ttcBelow && width >= minWidth;
     _streak = danger ? _streak + 1 : 0;
     if (_streak < 2) return false;
     if (_lastAt != null && now.difference(_lastAt!) < cooldown) return false;
@@ -266,4 +359,158 @@ double bearing(double lat1, double lon1, double lat2, double lon2) {
     if (best == null || d < best.$2) best = (i, d);
   }
   return best;
+}
+
+/// 知らせの種類。
+enum RoadEvent {
+  forwardCollision,
+  tooClose,
+  leadMoved,
+  laneDeparture,
+  carBehind,
+  signalRed,
+  signalGo,
+  speedCamera,
+  overspeed,
+  driverUnresponsive,
+}
+
+/// 前方モードの判定をひとまとめにする。アプリと、録画を再生して誤報を数える
+/// 道具（tool/replay_road.dart）の両方がここを通るので、両者の判定は必ず一致する。
+class DriveJudge {
+  final selector = LeadSelector();
+  final ttcTracker = TtcTracker();
+  final fcw = FcwJudge();
+  final headway = HeadwayJudge();
+  final launch = LaunchJudge();
+  final ldw = LdwJudge();
+
+  /// 車線逸脱を見るか（既定 OFF。車線維持支援は満足度がいちばん低い＝うるさい）。
+  bool laneDeparture = false;
+
+  RoadObject? lead;
+  double? ttc;
+  double? laneOffset;
+
+  List<RoadEvent> feed({
+    required List<RoadObject> objects,
+    required DateTime now,
+    double? speedKmh,
+    bool turning = false,
+    Uint8List? rgb,
+    int rgbSize = 300,
+  }) {
+    final out = <RoadEvent>[];
+    final l = selector.pick(objects);
+    lead = l;
+    if (selector.switched || selector.lost) ttcTracker.reset();
+    // 見失っている間（猶予中）は TTC を前の値のまま持たない。点が無いので出さない。
+    ttc = l == null ? null : ttcTracker.feed(l.width, now);
+    if (l != null &&
+        fcw.feed(ttc: ttc, width: l.width, speedKmh: speedKmh, turning: turning, now: now)) {
+      out.add(RoadEvent.forwardCollision);
+    }
+    if (headway.feed(width: l?.width, speedKmh: speedKmh, now: now)) {
+      out.add(RoadEvent.tooClose);
+    }
+    final stopped = speedKmh != null && speedKmh < 3;
+    if (launch.feed(leadWidth: l?.width, stopped: stopped, now: now)) {
+      out.add(RoadEvent.leadMoved);
+    }
+    if (laneDeparture && rgb != null) {
+      laneOffset = estimateLaneOffset(rgb, rgbSize);
+      if (ldw.feed(offset: laneOffset, speedKmh: speedKmh, turning: turning, now: now)) {
+        out.add(RoadEvent.laneDeparture);
+      }
+    } else {
+      laneOffset = null;
+    }
+    return out;
+  }
+}
+
+/// 路面の白線・黄線らしい画素か。
+bool _isMarking(int r, int g, int b) {
+  final white = r > 170 && g > 170 && b > 170;
+  final yellow = r > 170 && g > 130 && b < 110 && r - b > 90;
+  return white || yellow;
+}
+
+/// 画面下 40% の各行で、中央から左右へ最初に当たる白線・黄線を探し、
+/// 左右の線の中点が画面のどこにあるか（-1〜1、線 1 本ぶんずれると ±1）を返す。
+/// 両方の線が見えた行が 3 割に満たなければ null（分からないときは鳴らさない）。
+///
+/// 深層学習の車線モデルではなく、明るさだけの簡易な方法。夜・雨・かすれた線・
+/// 影には弱い。だから車線逸脱は既定 OFF。
+double? estimateLaneOffset(Uint8List rgb, int size) {
+  final y0 = (size * 0.6).round(), y1 = (size * 0.95).round();
+  final mid = size ~/ 2;
+  var rows = 0, hits = 0;
+  var sumCenter = 0.0, sumHalf = 0.0;
+  for (var y = y0; y < y1; y += 2) {
+    rows++;
+    int? left, right;
+    for (var x = mid; x >= 1; x--) {
+      final i = (y * size + x) * 3, j = (y * size + x - 1) * 3;
+      if (_isMarking(rgb[i], rgb[i + 1], rgb[i + 2]) &&
+          _isMarking(rgb[j], rgb[j + 1], rgb[j + 2])) {
+        left = x;
+        break;
+      }
+    }
+    for (var x = mid; x < size - 1; x++) {
+      final i = (y * size + x) * 3, j = (y * size + x + 1) * 3;
+      if (_isMarking(rgb[i], rgb[i + 1], rgb[i + 2]) &&
+          _isMarking(rgb[j], rgb[j + 1], rgb[j + 2])) {
+        right = x;
+        break;
+      }
+    }
+    if (left == null || right == null || right - left < size * 0.15) continue;
+    hits++;
+    sumCenter += (left + right) / 2;
+    sumHalf += (right - left) / 2;
+  }
+  if (rows == 0 || hits < rows * 0.3) return null;
+  final center = sumCenter / hits, half = sumHalf / hits;
+  return (center - mid) / half;
+}
+
+/// 車線逸脱警報（LDW、ISO 17361 の考え方）。スマホは車の中心に付くとは限らないので、
+/// 絶対値ではなく**普段の位置（ゆっくり学ぶ基準）からのずれ**で見る。
+/// 60km/h 以上・曲がっていない・ずれが [driftAbove] を超えて [hold] 続いたら。
+class LdwJudge {
+  static const driftAbove = 0.5;
+  static const minSpeed = 60.0;
+  static const hold = Duration(seconds: 1);
+  static const cooldown = Duration(seconds: 10);
+  double? baseline;
+  DateTime? _since, _lastAt;
+
+  bool feed({
+    required double? offset,
+    required double? speedKmh,
+    bool turning = false,
+    required DateTime now,
+  }) {
+    if (offset == null || speedKmh == null || speedKmh < minSpeed || turning) {
+      _since = null;
+      return false;
+    }
+    baseline ??= offset;
+    final drift = (offset - baseline!).abs();
+    if (drift < driftAbove / 2) {
+      baseline = baseline! * 0.98 + offset * 0.02;
+    }
+    if (drift < driftAbove) {
+      _since = null;
+      return false;
+    }
+    _since ??= now;
+    if (now.difference(_since!) < hold) return false;
+    if (_lastAt != null && now.difference(_lastAt!) < cooldown) return false;
+    _lastAt = now;
+    _since = null;
+    return true;
+  }
 }

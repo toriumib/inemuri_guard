@@ -29,6 +29,8 @@
     <!-- 制限速度の知らせ（車モード・画面を開いている間だけ。背面の位置は取らない） -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- ドライバー異常時対応: 反応が無いとき、本人が登録した家族へ発信（既定 OFF） -->
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>

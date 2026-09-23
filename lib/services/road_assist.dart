@@ -47,27 +47,53 @@ class RoadAssist extends ChangeNotifier {
 
   final _det = RoadDetector();
   final _tts = FlutterTts();
+  final drive = DriveJudge();
   final _ttc = TtcTracker();
-  final _fcw = FcwJudge();
-  final _headway = HeadwayJudge();
-  final _launch = LaunchJudge();
   final _approach = ApproachJudge();
   StreamSubscription<AccelerometerEvent>? _accel;
+  StreamSubscription<GyroscopeEvent>? _gyro;
+
+  /// 曲がっている・大きく揺れている（角速度 > 0.35 rad/s ≒ 20°/s）。
+  /// その間は前方衝突と車線逸脱を見ない（枠と白線が横に流れる）。
+  bool turning = false;
+  DateTime? _turnUntil;
   double _gx = 0, _gy = 9.8;
   bool _busy = false, _disposed = false;
   DateTime _lastRun = DateTime.fromMillisecondsSinceEpoch(0);
+  Uint8List? _laneRgb;
+  static const _laneSize = 160;
   SignalColor _spokenSignal = SignalColor.unknown;
   int _signalStreak = 0;
   SignalColor _signalCandidate = SignalColor.unknown;
 
+  /// 使っているモデル（画面に出す）。
+  RoadModel get model => _det.model;
+
+  /// 直近の推論の時間（ms）。
+  int get inferMs => _det.lastMs;
+
   Future<void> start(String lang) async {
     try {
-      await _det.load();
+      // 前方は遠い車を見つけたいので、速い端末なら重いモデルを使う。
+      // 歩行は近い車・信号なので軽いモデルで足りる。
+      if (mode == RoadMode.drive) {
+        await _det.loadBest();
+      } else {
+        await _det.load();
+      }
       await _tts.setLanguage(lang == 'ja' ? 'ja-JP' : 'en-US');
       await _tts.setSpeechRate(0.55);
       _accel = accelerometerEventStream().listen((e) {
         _gx = e.x;
         _gy = e.y;
+      });
+      _gyro = gyroscopeEventStream().listen((e) {
+        final w = e.x * e.x + e.y * e.y + e.z * e.z;
+        // 曲がり終えてから 1 秒は、まだ曲がっているとみなす。
+        if (w > 0.35 * 0.35) {
+          _turnUntil = DateTime.now().add(const Duration(seconds: 1));
+        }
+        turning = _turnUntil != null && DateTime.now().isBefore(_turnUntil!);
       });
     } catch (e) {
       error = '$e';
@@ -88,7 +114,14 @@ class RoadAssist extends ChangeNotifier {
     _lastRun = now;
     try {
       final rot = uprightRotation(sensorOrientation, _gx, _gy);
-      objects = await _det.detect(img, rot);
+      final driving = mode == RoadMode.drive;
+      objects = await _det.detect(
+        img,
+        rot,
+        roi: driving ? RoadRoi.center : RoadRoi.full,
+      );
+      // 車線の白線は画面の下の両端にあるので、切り出す前の全体で見る（推論はしない）。
+      _laneRgb = driving && drive.laneDeparture ? _det.fullFrame(img, rot, _laneSize) : null;
       if (gap < 2000) fps = fps * 0.8 + (1000 / gap) * 0.2;
       _judge(DateTime.now());
     } catch (e) {
@@ -102,23 +135,18 @@ class RoadAssist extends ChangeNotifier {
   void _judge(DateTime now) {
     switch (mode) {
       case RoadMode.drive:
-        final l = pickLead(objects);
-        lead = l;
-        if (l == null) {
-          _ttc.reset();
-          ttc = null;
-        } else {
-          ttc = _ttc.feed(l.width, now);
-        }
-        if (l != null && _fcw.feed(ttc: ttc, width: l.width, speedKmh: speedKmh, now: now)) {
-          _emit(RoadEvent.forwardCollision, now);
-        }
-        if (_headway.feed(width: l?.width, speedKmh: speedKmh, now: now)) {
-          _emit(RoadEvent.tooClose, now);
-        }
-        final stopped = speedKmh != null && speedKmh! < 3;
-        if (_launch.feed(leadWidth: l?.width, stopped: stopped, now: now)) {
-          _emit(RoadEvent.leadMoved, now);
+        final events = drive.feed(
+          objects: objects,
+          now: now,
+          speedKmh: speedKmh,
+          turning: turning,
+          rgb: _laneRgb,
+          rgbSize: _laneSize,
+        );
+        lead = drive.lead;
+        ttc = drive.ttc;
+        for (final e in events) {
+          _emit(e, now);
         }
       case RoadMode.walkBehind:
         final v = pickLargestVehicle(objects);
@@ -166,19 +194,9 @@ class RoadAssist extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     unawaited(_accel?.cancel());
+    unawaited(_gyro?.cancel());
     unawaited(_det.close());
     unawaited(_tts.stop());
     super.dispose();
   }
-}
-
-enum RoadEvent {
-  forwardCollision,
-  tooClose,
-  leadMoved,
-  carBehind,
-  signalRed,
-  signalGo,
-  speedCamera,
-  overspeed,
 }

@@ -133,6 +133,40 @@ class _DetectScreenState extends State<DetectScreen>
               : context.l10n.positionHint,
         ),
         const SizedBox(height: 16),
+        // 使う場所を最初に選ばせる。車の見張り（DDAW・ADDW・ISA）はこの製品の
+        // いちばんの売りなのに、以前は「感度・使う場所を変える」の中に隠れていた。
+        Text(
+          context.l10n.placementTitle,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 6),
+        SegmentedButton<bool>(
+          segments: [
+            ButtonSegment(
+              value: false,
+              icon: const Icon(Icons.desk_outlined),
+              label: Text(context.l10n.desk),
+            ),
+            ButtonSegment(
+              value: true,
+              icon: const Icon(Icons.directions_car_outlined),
+              label: Text(context.l10n.car),
+            ),
+          ],
+          selected: {stats.carMode},
+          onSelectionChanged: (v) async {
+            await stats.setCarMode(v.first);
+            if (mounted) _applyPlacement(stats);
+          },
+        ),
+        if (stats.carMode) ...[
+          const SizedBox(height: 6),
+          Text(
+            context.l10n.carWatchSummary,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+        const SizedBox(height: 12),
         const MonitoringStatus(),
         const SizedBox(height: 12),
         FilledButton.icon(
@@ -246,22 +280,8 @@ class _DetectScreenState extends State<DetectScreen>
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             children: [
               const SensitivityControl(),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final car in [false, true])
-                    ChoiceChip(
-                      label: Text(car ? context.l10n.car : context.l10n.desk),
-                      selected: stats.carMode == car,
-                      onSelected: (_) async {
-                        await stats.setCarMode(car);
-                        if (mounted) _applyPlacement(stats);
-                      },
-                    ),
-                ],
-              ),
               if (stats.carMode) ...[
+                const _UnresponsiveCallTile(),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(context.l10n.speedLimitToggle),
@@ -296,6 +316,60 @@ class _DetectScreenState extends State<DetectScreen>
         const WalkLightCard(),
         const DashcamCard(),
       ],
+    );
+  }
+}
+
+/// ドライバー異常時対応: 反応が無いとき家族に電話する設定。
+class _UnresponsiveCallTile extends StatelessWidget {
+  const _UnresponsiveCallTile();
+
+  Future<void> _edit(BuildContext context, StatsService stats, bool enable) async {
+    final ctl = TextEditingController(text: stats.emergencyContact);
+    final number = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.unresponsiveCallToggle),
+        content: TextField(
+          controller: ctl,
+          keyboardType: TextInputType.phone,
+          autofocus: true,
+          decoration: InputDecoration(labelText: context.l10n.emergencyContactLabel),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, ctl.text),
+            child: Text(MaterialLocalizations.of(context).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+    if (number == null || number.trim().isEmpty) return;
+    // 発信の許可。断られてもダイヤル画面までは開ける（発信は本人が押す）。
+    if (enable) await Permission.phone.request();
+    await stats.setUnresponsiveCall(enable, number);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = context.watch<StatsService>();
+    final l = context.l10n;
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(l.unresponsiveCallToggle),
+      subtitle: Text(
+        stats.emergencyContact.isEmpty
+            ? l.unresponsiveCallHelp
+            : '${stats.emergencyContact}\n${l.unresponsiveCallHelp}',
+      ),
+      value: stats.unresponsiveCall && stats.emergencyContact.isNotEmpty,
+      onChanged: (v) => v
+          ? _edit(context, stats, true)
+          : stats.setUnresponsiveCall(false, stats.emergencyContact),
     );
   }
 }

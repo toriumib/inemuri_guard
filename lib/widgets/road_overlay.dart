@@ -14,6 +14,8 @@ String roadEventText(AppLocalizations l, RoadEvent e) => switch (e) {
   RoadEvent.signalGo => l.roadSignalGo,
   RoadEvent.speedCamera => l.roadSpeedCamera,
   RoadEvent.overspeed => l.roadOverspeed,
+  RoadEvent.laneDeparture => l.roadLaneDeparture,
+  RoadEvent.driverUnresponsive => l.roadDriverUnresponsive,
 };
 
 /// プレビューの上に、見つけた物の枠を描く。注目している 1 台（前の車・信号）は太く。

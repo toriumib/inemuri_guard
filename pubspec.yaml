@@ -115,6 +115,8 @@ flutter:
     - assets/sfx/bell.wav
     # 車・人・信号の検出（COCO SSD MobileNet v1 量子化、TensorFlow Models、Apache-2.0）
     - assets/models/ssd_mobilenet_v1_coco.tflite
+    # 前方モードの高精度版（EfficientDet-Lite2、TensorFlow Hub、Apache-2.0）。速い端末だけで使う
+    - assets/models/efficientdet_lite2_coco.tflite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

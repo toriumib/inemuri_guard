@@ -750,4 +750,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String emergencyShareText(String url) {
     return 'I\'ve been in a crash. My location: $url';
   }
+
+  @override
+  String get roadLaneDeparture => 'You\'re drifting out of your lane';
+
+  @override
+  String get roadDriverUnresponsive => 'No response';
+
+  @override
+  String get unresponsiveTitle => 'No response';
+
+  @override
+  String unresponsiveCountdown(String seconds, String number) {
+    return 'Calling $number in $seconds s';
+  }
+
+  @override
+  String get unresponsiveNoContact =>
+      'Add a family member\'s number and the app can call them when you don\'t respond (Monitor → Sensitivity and placement).';
+
+  @override
+  String get unresponsiveCalled => 'Calling now';
+
+  @override
+  String get unresponsiveDialer =>
+      'The dialer is open. Tap call to place the call.';
+
+  @override
+  String get imAwake => 'I\'m awake (stop)';
+
+  @override
+  String get unresponsiveCallToggle =>
+      'Call family if you don\'t respond (driver emergency)';
+
+  @override
+  String get unresponsiveCallHelp =>
+      'In car mode, if the drowsiness alarm keeps ringing for 20 seconds, the app waits 15 more seconds and then calls the number you saved. It never calls emergency services on its own. The number is stored only on this device.';
+
+  @override
+  String get emergencyContactLabel => 'Family member\'s phone number';
+
+  @override
+  String get laneDepartureToggle => 'Lane departure warning (LDW)';
+
+  @override
+  String get laneDepartureHelp =>
+      'Above 60 km/h, it tells you when you drift well off your usual position between the lines. It doesn\'t work on faded lines, at night, in rain or on curves. Off by default.';
+
+  @override
+  String get carWatchSummary =>
+      'In the car it watches for: drowsiness (DDAW), looking away and phone use (ADDW), speed limits (ISA)';
+
+  @override
+  String get placementTitle => 'Where you use it';
 }

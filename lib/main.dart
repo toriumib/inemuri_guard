@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'l10n/app_language.dart';
 
+import 'screens/emergency_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/terms_gate.dart';
 import 'services/ad_service.dart';
@@ -24,6 +25,10 @@ import 'services/sleep_log_service.dart';
 import 'services/sleep_time_log_service.dart';
 import 'services/stats_service.dart';
 import 'theme/app_theme.dart';
+
+/// どの画面からでも「反応がありません」の画面を出すための鍵。
+final appNavigator = GlobalKey<NavigatorState>();
+bool _unresponsiveOpen = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -142,6 +147,25 @@ class InemuriGuardApp extends StatelessWidget {
             onLookAway: () => unawaited(
               context.read<AlarmService>().warn().catchError((_) {}),
             ),
+            onUnresponsive: () {
+              final nav = appNavigator.currentState;
+              if (nav == null || _unresponsiveOpen) return;
+              _unresponsiveOpen = true;
+              nav
+                  .push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EmergencyScreen(
+                        unresponsive: true,
+                        contact: stats.unresponsiveCall
+                            ? stats.emergencyContact
+                            : '',
+                        onAwake: () =>
+                            context.read<AlertCoordinator>().dismiss(),
+                      ),
+                    ),
+                  )
+                  .whenComplete(() => _unresponsiveOpen = false);
+            },
             onRestAdvice: () {
               if (WidgetsBinding.instance.lifecycleState !=
                   AppLifecycleState.resumed) {
@@ -160,6 +184,7 @@ class InemuriGuardApp extends StatelessWidget {
       // whole app immediately, in both light and dark.
       child: Consumer<StatsService>(
         builder: (context, stats, _) => MaterialApp(
+          navigatorKey: appNavigator,
           onGenerateTitle: (context) => context.l10n.appName,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

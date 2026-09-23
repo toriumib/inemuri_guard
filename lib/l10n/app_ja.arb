@@ -250,5 +250,30 @@
         "type": "String"
       }
     }
-  }
+  },
+  "roadLaneDeparture": "車線をはみ出しています",
+  "roadDriverUnresponsive": "反応がありません",
+  "unresponsiveTitle": "反応がありません",
+  "unresponsiveCountdown": "{seconds} 秒後に {number} へ電話します",
+  "@unresponsiveCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      },
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "unresponsiveNoContact": "家族の電話番号を登録すると、反応が無いときに電話できます（検知 → 感度・使う場所を変える）。",
+  "unresponsiveCalled": "電話を掛けました",
+  "unresponsiveDialer": "ダイヤル画面を開きました。発信ボタンを押してください",
+  "imAwake": "起きています（止める）",
+  "unresponsiveCallToggle": "反応がないとき家族に電話（ドライバー異常時対応）",
+  "unresponsiveCallHelp": "車モードで居眠りのアラームが 20 秒止まらないと、15 秒の猶予のあと、登録した番号へ電話します。119・110 へは自動で掛けません。番号はこの端末の中だけに保存します。",
+  "emergencyContactLabel": "家族などの電話番号",
+  "laneDepartureToggle": "車線逸脱警報（LDW）",
+  "laneDepartureHelp": "60km/h 以上で、白線から大きくずれたら知らせます。白線がかすれた道・夜・雨・カーブでは働きません。初期状態はオフです。",
+  "carWatchSummary": "車で見張ること: 居眠り（DDAW）・脇見とスマホ操作（ADDW）・制限速度（ISA）",
+  "placementTitle": "使う場所"
 }

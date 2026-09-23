@@ -100,4 +100,53 @@ void main() {
     b.dispose();
     n.dispose();
   });
+
+  test('車モードで居眠りのアラームが 20 秒止まらなければ一度だけ異常時対応へ', () async {
+    final d = DrowsinessDetector()..carMode = true;
+    final b = BreathingDetector();
+    final nap = NapTimerService();
+    var calls = 0;
+    final alerts = AlertCoordinator(
+      detector: d,
+      breathing: b,
+      nap: nap,
+      applyAlarm: (_) async {},
+      onUnresponsive: () => calls++,
+    );
+    b.alarmFiring = true;
+    alerts.requestNudge('x'); // 同期させる（寝息のアラームを拾わせる）
+    await Future<void>.delayed(Duration.zero);
+    final now = DateTime.now();
+    alerts.checkUnresponsive(now.add(const Duration(seconds: 10)));
+    expect(calls, 0, reason: '20 秒たっていない');
+    alerts.checkUnresponsive(now.add(const Duration(seconds: 21)));
+    alerts.checkUnresponsive(now.add(const Duration(seconds: 40)));
+    expect(calls, 1, reason: '1 回の鳴動につき一度');
+    d.carMode = false;
+    alerts.dispose();
+    b.dispose();
+    nap.dispose();
+  });
+
+  test('机では異常時対応に進まない', () async {
+    final d = DrowsinessDetector();
+    final b = BreathingDetector();
+    final nap = NapTimerService();
+    var calls = 0;
+    final alerts = AlertCoordinator(
+      detector: d,
+      breathing: b,
+      nap: nap,
+      applyAlarm: (_) async {},
+      onUnresponsive: () => calls++,
+    );
+    b.alarmFiring = true;
+    alerts.requestNudge('x');
+    await Future<void>.delayed(Duration.zero);
+    alerts.checkUnresponsive(DateTime.now().add(const Duration(minutes: 5)));
+    expect(calls, 0);
+    alerts.dispose();
+    b.dispose();
+    nap.dispose();
+  });
 }

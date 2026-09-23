@@ -1435,6 +1435,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I\'ve been in a crash. My location: {url}'**
   String emergencyShareText(String url);
+
+  /// No description provided for @roadLaneDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re drifting out of your lane'**
+  String get roadLaneDeparture;
+
+  /// No description provided for @roadDriverUnresponsive.
+  ///
+  /// In en, this message translates to:
+  /// **'No response'**
+  String get roadDriverUnresponsive;
+
+  /// No description provided for @unresponsiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No response'**
+  String get unresponsiveTitle;
+
+  /// No description provided for @unresponsiveCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Calling {number} in {seconds} s'**
+  String unresponsiveCountdown(String seconds, String number);
+
+  /// No description provided for @unresponsiveNoContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a family member\'s number and the app can call them when you don\'t respond (Monitor → Sensitivity and placement).'**
+  String get unresponsiveNoContact;
+
+  /// No description provided for @unresponsiveCalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Calling now'**
+  String get unresponsiveCalled;
+
+  /// No description provided for @unresponsiveDialer.
+  ///
+  /// In en, this message translates to:
+  /// **'The dialer is open. Tap call to place the call.'**
+  String get unresponsiveDialer;
+
+  /// No description provided for @imAwake.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m awake (stop)'**
+  String get imAwake;
+
+  /// No description provided for @unresponsiveCallToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Call family if you don\'t respond (driver emergency)'**
+  String get unresponsiveCallToggle;
+
+  /// No description provided for @unresponsiveCallHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In car mode, if the drowsiness alarm keeps ringing for 20 seconds, the app waits 15 more seconds and then calls the number you saved. It never calls emergency services on its own. The number is stored only on this device.'**
+  String get unresponsiveCallHelp;
+
+  /// No description provided for @emergencyContactLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Family member\'s phone number'**
+  String get emergencyContactLabel;
+
+  /// No description provided for @laneDepartureToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane departure warning (LDW)'**
+  String get laneDepartureToggle;
+
+  /// No description provided for @laneDepartureHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Above 60 km/h, it tells you when you drift well off your usual position between the lines. It doesn\'t work on faded lines, at night, in rain or on curves. Off by default.'**
+  String get laneDepartureHelp;
+
+  /// No description provided for @carWatchSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'In the car it watches for: drowsiness (DDAW), looking away and phone use (ADDW), speed limits (ISA)'**
+  String get carWatchSummary;
+
+  /// No description provided for @placementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you use it'**
+  String get placementTitle;
 }
 
 class _AppLocalizationsDelegate

@@ -721,4 +721,54 @@ class AppLocalizationsJa extends AppLocalizations {
   String emergencyShareText(String url) {
     return '事故にあいました。いまの位置: $url';
   }
+
+  @override
+  String get roadLaneDeparture => '車線をはみ出しています';
+
+  @override
+  String get roadDriverUnresponsive => '反応がありません';
+
+  @override
+  String get unresponsiveTitle => '反応がありません';
+
+  @override
+  String unresponsiveCountdown(String seconds, String number) {
+    return '$seconds 秒後に $number へ電話します';
+  }
+
+  @override
+  String get unresponsiveNoContact =>
+      '家族の電話番号を登録すると、反応が無いときに電話できます（検知 → 感度・使う場所を変える）。';
+
+  @override
+  String get unresponsiveCalled => '電話を掛けました';
+
+  @override
+  String get unresponsiveDialer => 'ダイヤル画面を開きました。発信ボタンを押してください';
+
+  @override
+  String get imAwake => '起きています（止める）';
+
+  @override
+  String get unresponsiveCallToggle => '反応がないとき家族に電話（ドライバー異常時対応）';
+
+  @override
+  String get unresponsiveCallHelp =>
+      '車モードで居眠りのアラームが 20 秒止まらないと、15 秒の猶予のあと、登録した番号へ電話します。119・110 へは自動で掛けません。番号はこの端末の中だけに保存します。';
+
+  @override
+  String get emergencyContactLabel => '家族などの電話番号';
+
+  @override
+  String get laneDepartureToggle => '車線逸脱警報（LDW）';
+
+  @override
+  String get laneDepartureHelp =>
+      '60km/h 以上で、白線から大きくずれたら知らせます。白線がかすれた道・夜・雨・カーブでは働きません。初期状態はオフです。';
+
+  @override
+  String get carWatchSummary => '車で見張ること: 居眠り（DDAW）・脇見とスマホ操作（ADDW）・制限速度（ISA）';
+
+  @override
+  String get placementTitle => '使う場所';
 }

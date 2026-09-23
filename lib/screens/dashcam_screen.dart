@@ -12,6 +12,7 @@ import '../services/drowsiness_detector.dart';
 import '../services/road_assist.dart';
 import '../services/road_logic.dart';
 import '../services/speed_limit_service.dart';
+import '../services/stats_service.dart';
 import '../widgets/road_overlay.dart';
 import '../widgets/speed_limit_panel.dart';
 import 'emergency_screen.dart';
@@ -86,6 +87,8 @@ class _DashcamScreenState extends State<DashcamScreen>
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final stats = context.watch<StatsService>();
+    road.drive.laneDeparture = stats.laneDepartureAlert;
     final state = context.watch<DrowsinessDetector>().state;
     final busy =
         state == DetectorState.watching ||
@@ -170,6 +173,13 @@ class _DashcamScreenState extends State<DashcamScreen>
               const SizedBox(height: 8),
               Text(l.dashcamAssist, style: Theme.of(context).textTheme.titleSmall),
               Text(l.dashcamAssistNote, style: Theme.of(context).textTheme.bodySmall),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l.laneDepartureToggle),
+                subtitle: Text(l.laneDepartureHelp),
+                value: stats.laneDepartureAlert,
+                onChanged: stats.setLaneDepartureAlert,
+              ),
               const SizedBox(height: 8),
               Text(l.dashcamLimits, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 16),
@@ -201,7 +211,10 @@ class _LeadInfo extends StatelessWidget {
                 : l.roadLeadInfo(distanceFromWidth(lead.width).round().toString()));
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text('$text · ${assist.fps.toStringAsFixed(1)} fps'),
+          child: Text(
+            '$text · ${assist.model.name} ${assist.inferMs}ms · '
+            '${assist.fps.toStringAsFixed(1)} fps',
+          ),
         );
       },
     );

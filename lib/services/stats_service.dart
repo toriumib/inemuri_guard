@@ -45,6 +45,9 @@ class StatsService extends ChangeNotifier {
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kCarMode = 'car_mode';
   static const _kSpeedLimit = 'speed_limit_alert';
+  static const _kLaneDeparture = 'lane_departure_alert';
+  static const _kUnresponsiveCall = 'unresponsive_call';
+  static const _kEmergencyContact = 'emergency_contact';
   static const _kTermsAccepted = 'terms_accepted_v';
   static const _kIlluminate = 'illuminate_in_dark';
   static const _kVoiceStop = 'voice_stop';
@@ -85,6 +88,15 @@ class StatsService extends ChangeNotifier {
   /// 区画が外部へ出る）。既定 ON（2026-09-23 本人判断）。位置の権限を
   /// 許可したときだけ実際に動く。
   bool speedLimitAlert = true;
+
+  /// 車線逸脱警報（LDW）。既定 OFF: 車線維持支援は満足度がいちばん低い（うるさい）。
+  bool laneDepartureAlert = false;
+
+  /// ドライバー異常時対応: 反応が無いとき [emergencyContact] に電話するか。既定 OFF。
+  bool unresponsiveCall = false;
+
+  /// 家族などの電話番号。端末の中だけに保存し、どこへも送らない。
+  String emergencyContact = '';
 
   /// 同意した利用規約の版。0 は未同意。TermsGate.version より小さければ
   /// 起動時にもう一度同意画面を出す。
@@ -160,6 +172,9 @@ class StatsService extends ChangeNotifier {
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
     speedLimitAlert = prefs.getBool(_kSpeedLimit) ?? true;
+    laneDepartureAlert = prefs.getBool(_kLaneDeparture) ?? false;
+    unresponsiveCall = prefs.getBool(_kUnresponsiveCall) ?? false;
+    emergencyContact = prefs.getString(_kEmergencyContact) ?? '';
     termsAcceptedVersion = prefs.getInt(_kTermsAccepted) ?? 0;
     illuminateInDark = prefs.getBool(_kIlluminate) ?? true;
     voiceStop = prefs.getBool(_kVoiceStop) ?? true;
@@ -287,6 +302,22 @@ class StatsService extends ChangeNotifier {
     termsAcceptedVersion = version;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kTermsAccepted, version);
+    notifyListeners();
+  }
+
+  Future<void> setLaneDepartureAlert(bool value) async {
+    laneDepartureAlert = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kLaneDeparture, value);
+    notifyListeners();
+  }
+
+  Future<void> setUnresponsiveCall(bool value, String contact) async {
+    unresponsiveCall = value;
+    emergencyContact = contact.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kUnresponsiveCall, value);
+    await prefs.setString(_kEmergencyContact, emergencyContact);
     notifyListeners();
   }
 

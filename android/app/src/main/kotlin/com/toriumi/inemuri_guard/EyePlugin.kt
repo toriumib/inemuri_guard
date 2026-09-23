@@ -120,6 +120,36 @@ class EyePlugin(private val context: Context, messenger: BinaryMessenger) {
             }
         }
 
+        // ── ドライバー異常時対応: 家族に電話 ──
+        // CALL_PHONE があればそのまま発信、無ければダイヤル画面に番号を入れて開く
+        // （押せば掛かる状態まで）。119/110 はここを通さない（誤検知で掛けないため）。
+        MethodChannel(messenger, "inemuri/call").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "call" -> {
+                    val number = call.argument<String>("number") ?: ""
+                    if (number.isBlank()) {
+                        result.success("none")
+                    } else {
+                        val granted = ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.CALL_PHONE
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val action = if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL
+                        try {
+                            context.startActivity(
+                                Intent(action, android.net.Uri.fromParts("tel", number, null))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            result.success(if (granted) "called" else "dialer")
+                        } catch (e: Exception) {
+                            Log.w("EyePlugin", "call failed", e)
+                            result.success("failed")
+                        }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         // ── 外側のライト（フラッシュLED） ──
         MethodChannel(messenger, "inemuri/torch").setMethodCallHandler { call, result ->
             when (call.method) {
