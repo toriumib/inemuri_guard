@@ -154,7 +154,7 @@
   "termsDrivingTitle": "車内では補助としてのみ、自己責任で",
   "termsDrivingBody": "運転者の注意義務の代わりにはなりません。運転中は端末を操作せず、法令に従い、眠気を感じたら SA・PA・駐車場など安全な場所に停めて休んでください。依拠による事故・損害の責任は負いません。",
   "privacyTitle": "プライバシー",
-  "termsPrivacyBody": "カメラ映像と呼吸音の検知は端末内で行い、録画・録音は保存しません。任意の「声で止める」は端末の音声認識を使い、提供元へ音声が送られる場合があります。広告・課金サービスにも通信があります。",
+  "termsPrivacyBody": "カメラ映像と呼吸音の検知は端末内で行い、録画・録音は保存しません（録画は、自分で開いたドラレコだけで、端末内に保存します）。車モードの「制限速度を知らせる」（初期状態オン）は、いる場所のおおよその区画（約 2km 四方）を OpenStreetMap の地図サーバーへ送ります。任意の「声で止める」は端末の音声認識を使い、提供元へ音声が送られる場合があります。広告・課金サービスにも通信があります。",
   "termsAsIsTitle": "現状有姿での提供",
   "termsAsIsBody": "正確さや継続を保証しません。有料機能の購入・返金は Google Play の規定に従います。",
   "termsFull": "利用規約の全文",
@@ -182,5 +182,28 @@
   "dashcamBusy": "居眠りの見張りがカメラを使っています。カメラは同時に 1 つしか開けないので、見張りを止めてから録画してください。",
   "dashcamLimits": "画面を開いている間だけ録画します（ほかのアプリに切り替えると止まります）。音は録りません。映像はこの端末の中だけに保存し、共有したときだけ外へ出ます。区切りごとに 1 秒弱の抜けがあります。専用のドライブレコーダーの代わりにはなりません。",
   "dashcamShare": "共有・保存",
-  "dashcamDelete": "削除"
+  "dashcamDelete": "削除",
+  "speedLimitToggle": "制限速度を知らせる",
+  "speedLimitHelp": "道路の制限速度を超えて 3 秒続くと、短い音と振動で知らせます。制限速度は OpenStreetMap から引くため、いる場所のおおよその区画（約 2km 四方）がその地図サーバーへ送られます。速度・正確な位置・端末の識別子は送りません。標識のデータが無い道路では表示されません。必ず実際の標識に従ってください。",
+  "speedLimitNow": "制限 {limit}",
+  "@speedLimitNow": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "speedNow": "現在 {speed} km/h",
+  "@speedNow": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "speedLimitUnknown": "制限速度のデータなし",
+  "speedLimitDenied": "位置の権限がないため、制限速度は使えません。",
+  "speedLimitLocationOff": "端末の位置情報がオフです。",
+  "speedLimitNetwork": "地図データを取得できません（圏外など）。",
+  "osmCredit": "地図データ © OpenStreetMap contributors"
 }

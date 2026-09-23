@@ -15,6 +15,7 @@ import '../widgets/monitoring_status.dart';
 import '../widgets/first_use_card.dart';
 import '../widgets/quick_setup_card.dart';
 import '../widgets/walk_light_card.dart';
+import '../widgets/speed_limit_panel.dart';
 
 /// Daily use needs no configuration. Diagnostics and optional modes stay folded.
 class DetectScreen extends StatefulWidget {
@@ -206,6 +207,7 @@ class _DetectScreenState extends State<DetectScreen>
           const SizedBox(height: 12),
           CameraStage(detector: detector, showPreview: true),
         ],
+        const SpeedLimitPanel(),
         if (alerts.restAdvice)
           Card(
             child: Padding(
@@ -260,6 +262,13 @@ class _DetectScreenState extends State<DetectScreen>
                 ],
               ),
               if (stats.carMode) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.l10n.speedLimitToggle),
+                  subtitle: Text(context.l10n.speedLimitHelp),
+                  value: stats.speedLimitAlert,
+                  onChanged: stats.setSpeedLimitAlert,
+                ),
                 Text(context.l10n.drivingWarning),
                 OutlinedButton.icon(
                   onPressed: _maps,

@@ -236,7 +236,7 @@
   "termsDrivingTitle": "In a vehicle, use only as an aid",
   "termsDrivingBody": "You remain responsible for driving safely and following local laws. Do not operate the app while driving. If you feel drowsy, park somewhere safe and rest. We accept no liability for accidents or damage caused by relying on this app.",
   "privacyTitle": "Privacy",
-  "termsPrivacyBody": "Camera and breathing detection run on your device without saving recordings. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.",
+  "termsPrivacyBody": "Camera and breathing detection run on your device without saving recordings (the only recording is the dashcam you open yourself, saved on this device). In car mode, speed limit alerts (on by default) send the rough area you're in, a square about 2 km across, to an OpenStreetMap map server. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.",
   "termsAsIsTitle": "Provided as is",
   "termsAsIsBody": "Accuracy and continued availability are not guaranteed. Purchases and refunds follow Google Play’s rules.",
   "termsFull": "Full terms",
@@ -264,5 +264,28 @@
   "dashcamBusy": "Drowsiness monitoring is using the camera. Only one camera can be open at a time, so stop monitoring before recording.",
   "dashcamLimits": "Records only while this screen is open (switching apps stops it). No audio is recorded. Clips stay on this device and leave it only when you share them. There's a gap of under a second between clips. This doesn't replace a dedicated dashcam.",
   "dashcamShare": "Share / save",
-  "dashcamDelete": "Delete"
+  "dashcamDelete": "Delete",
+  "speedLimitToggle": "Speed limit alerts",
+  "speedLimitHelp": "If you go over the road's speed limit for 3 seconds, you'll get a short beep and vibration. Limits come from OpenStreetMap, so the rough area you're in (a square about 2 km across) is sent to that map server. Your speed, exact position and device identifiers are not sent. Roads without speed-limit data show nothing. Always follow the actual road signs.",
+  "speedLimitNow": "Limit {limit}",
+  "@speedLimitNow": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "speedNow": "Now {speed} km/h",
+  "@speedNow": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "speedLimitUnknown": "No speed-limit data",
+  "speedLimitDenied": "Location permission is off, so speed limits aren't available.",
+  "speedLimitLocationOff": "Location is turned off on this device.",
+  "speedLimitNetwork": "Couldn't load map data (no signal?).",
+  "osmCredit": "Map data © OpenStreetMap contributors"
 }

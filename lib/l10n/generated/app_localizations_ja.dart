@@ -498,7 +498,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get termsPrivacyBody =>
-      'カメラ映像と呼吸音の検知は端末内で行い、録画・録音は保存しません。任意の「声で止める」は端末の音声認識を使い、提供元へ音声が送られる場合があります。広告・課金サービスにも通信があります。';
+      'カメラ映像と呼吸音の検知は端末内で行い、録画・録音は保存しません（録画は、自分で開いたドラレコだけで、端末内に保存します）。車モードの「制限速度を知らせる」（初期状態オン）は、いる場所のおおよその区画（約 2km 四方）を OpenStreetMap の地図サーバーへ送ります。任意の「声で止める」は端末の音声認識を使い、提供元へ音声が送られる場合があります。広告・課金サービスにも通信があります。';
 
   @override
   String get termsAsIsTitle => '現状有姿での提供';
@@ -588,4 +588,36 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashcamDelete => '削除';
+
+  @override
+  String get speedLimitToggle => '制限速度を知らせる';
+
+  @override
+  String get speedLimitHelp =>
+      '道路の制限速度を超えて 3 秒続くと、短い音と振動で知らせます。制限速度は OpenStreetMap から引くため、いる場所のおおよその区画（約 2km 四方）がその地図サーバーへ送られます。速度・正確な位置・端末の識別子は送りません。標識のデータが無い道路では表示されません。必ず実際の標識に従ってください。';
+
+  @override
+  String speedLimitNow(String limit) {
+    return '制限 $limit';
+  }
+
+  @override
+  String speedNow(String speed) {
+    return '現在 $speed km/h';
+  }
+
+  @override
+  String get speedLimitUnknown => '制限速度のデータなし';
+
+  @override
+  String get speedLimitDenied => '位置の権限がないため、制限速度は使えません。';
+
+  @override
+  String get speedLimitLocationOff => '端末の位置情報がオフです。';
+
+  @override
+  String get speedLimitNetwork => '地図データを取得できません（圏外など）。';
+
+  @override
+  String get osmCredit => '地図データ © OpenStreetMap contributors';
 }

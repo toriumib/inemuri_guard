@@ -44,6 +44,7 @@ class StatsService extends ChangeNotifier {
   static const _kAutoStart = 'auto_start_detection';
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kCarMode = 'car_mode';
+  static const _kSpeedLimit = 'speed_limit_alert';
   static const _kTermsAccepted = 'terms_accepted_v';
   static const _kIlluminate = 'illuminate_in_dark';
   static const _kVoiceStop = 'voice_stop';
@@ -79,6 +80,11 @@ class StatsService extends ChangeNotifier {
   /// 見張るためのボタンを出す。既定は OFF（机で使う人が多い）。
   /// 検知画面の「使う場所」で決める。裏向き（背面カメラ）は開発中の機能。
   bool carMode = false;
+
+  /// 車モードで制限速度を知らせるか（OpenStreetMap を引く＝約 2km 四方の
+  /// 区画が外部へ出る）。既定 ON（2026-09-23 本人判断）。位置の権限を
+  /// 許可したときだけ実際に動く。
+  bool speedLimitAlert = true;
 
   /// 同意した利用規約の版。0 は未同意。TermsGate.version より小さければ
   /// 起動時にもう一度同意画面を出す。
@@ -153,6 +159,7 @@ class StatsService extends ChangeNotifier {
     autoStartDetection = prefs.getBool(_kAutoStart) ?? true;
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
+    speedLimitAlert = prefs.getBool(_kSpeedLimit) ?? true;
     termsAcceptedVersion = prefs.getInt(_kTermsAccepted) ?? 0;
     illuminateInDark = prefs.getBool(_kIlluminate) ?? true;
     voiceStop = prefs.getBool(_kVoiceStop) ?? true;
@@ -280,6 +287,13 @@ class StatsService extends ChangeNotifier {
     termsAcceptedVersion = version;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kTermsAccepted, version);
+    notifyListeners();
+  }
+
+  Future<void> setSpeedLimitAlert(bool value) async {
+    speedLimitAlert = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSpeedLimit, value);
     notifyListeners();
   }
 

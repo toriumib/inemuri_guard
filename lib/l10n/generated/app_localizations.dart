@@ -1025,7 +1025,7 @@ abstract class AppLocalizations {
   /// No description provided for @termsPrivacyBody.
   ///
   /// In en, this message translates to:
-  /// **'Camera and breathing detection run on your device without saving recordings. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.'**
+  /// **'Camera and breathing detection run on your device without saving recordings (the only recording is the dashcam you open yourself, saved on this device). In car mode, speed limit alerts (on by default) send the rough area you\'re in, a square about 2 km across, to an OpenStreetMap map server. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.'**
   String get termsPrivacyBody;
 
   /// No description provided for @termsAsIsTitle.
@@ -1195,6 +1195,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get dashcamDelete;
+
+  /// No description provided for @speedLimitToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed limit alerts'**
+  String get speedLimitToggle;
+
+  /// No description provided for @speedLimitHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'If you go over the road\'s speed limit for 3 seconds, you\'ll get a short beep and vibration. Limits come from OpenStreetMap, so the rough area you\'re in (a square about 2 km across) is sent to that map server. Your speed, exact position and device identifiers are not sent. Roads without speed-limit data show nothing. Always follow the actual road signs.'**
+  String get speedLimitHelp;
+
+  /// No description provided for @speedLimitNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit {limit}'**
+  String speedLimitNow(String limit);
+
+  /// No description provided for @speedNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Now {speed} km/h'**
+  String speedNow(String speed);
+
+  /// No description provided for @speedLimitUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'No speed-limit data'**
+  String get speedLimitUnknown;
+
+  /// No description provided for @speedLimitDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission is off, so speed limits aren\'t available.'**
+  String get speedLimitDenied;
+
+  /// No description provided for @speedLimitLocationOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is turned off on this device.'**
+  String get speedLimitLocationOff;
+
+  /// No description provided for @speedLimitNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load map data (no signal?).'**
+  String get speedLimitNetwork;
+
+  /// No description provided for @osmCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Map data © OpenStreetMap contributors'**
+  String get osmCredit;
 }
 
 class _AppLocalizationsDelegate

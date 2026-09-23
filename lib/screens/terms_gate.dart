@@ -12,7 +12,8 @@ import '../l10n/app_language.dart';
 /// 版（[version]）を上げると、前の版に同意した人にも再表示される。
 class TermsGate extends StatelessWidget {
   /// 規約の版。文面を大きく変えたら上げる（Web の /terms/ の版と揃える）。
-  static const version = 1;
+  /// 2: 制限速度（位置の区画を OpenStreetMap へ送る）とドラレコを足した（2026-09-23）。
+  static const version = 2;
   static const url = 'https://inemuri.toriumis.com/terms/';
   static const privacyUrl = 'https://inemuri.toriumis.com/app/privacy/';
 

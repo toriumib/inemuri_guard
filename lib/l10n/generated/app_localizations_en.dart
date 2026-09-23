@@ -524,7 +524,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termsPrivacyBody =>
-      'Camera and breathing detection run on your device without saving recordings. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.';
+      'Camera and breathing detection run on your device without saving recordings (the only recording is the dashcam you open yourself, saved on this device). In car mode, speed limit alerts (on by default) send the rough area you\'re in, a square about 2 km across, to an OpenStreetMap map server. Optional voice control uses your device’s speech recognition service, which may send audio to its provider. Advertising and purchase services also use network connections.';
 
   @override
   String get termsAsIsTitle => 'Provided as is';
@@ -616,4 +616,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashcamDelete => 'Delete';
+
+  @override
+  String get speedLimitToggle => 'Speed limit alerts';
+
+  @override
+  String get speedLimitHelp =>
+      'If you go over the road\'s speed limit for 3 seconds, you\'ll get a short beep and vibration. Limits come from OpenStreetMap, so the rough area you\'re in (a square about 2 km across) is sent to that map server. Your speed, exact position and device identifiers are not sent. Roads without speed-limit data show nothing. Always follow the actual road signs.';
+
+  @override
+  String speedLimitNow(String limit) {
+    return 'Limit $limit';
+  }
+
+  @override
+  String speedNow(String speed) {
+    return 'Now $speed km/h';
+  }
+
+  @override
+  String get speedLimitUnknown => 'No speed-limit data';
+
+  @override
+  String get speedLimitDenied =>
+      'Location permission is off, so speed limits aren\'t available.';
+
+  @override
+  String get speedLimitLocationOff => 'Location is turned off on this device.';
+
+  @override
+  String get speedLimitNetwork => 'Couldn\'t load map data (no signal?).';
+
+  @override
+  String get osmCredit => 'Map data © OpenStreetMap contributors';
 }

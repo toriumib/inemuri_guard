@@ -82,6 +82,7 @@ dependencies:
   speech_to_text: ^7.4.0
   sensors_plus: ^7.1.0
   path_provider: ^2.1.6
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:
