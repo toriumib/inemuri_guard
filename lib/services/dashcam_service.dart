@@ -27,6 +27,12 @@ class DashcamService extends ChangeNotifier {
   static const impactG = 2.5;
 
   CameraController? controller;
+
+  /// 録画しながら流れてくるフレーム（前方の見張り＝RoadAssist へ渡す）。
+  void Function(CameraImage img, int sensorOrientation)? onFrame;
+
+  /// 衝撃を検知した（事故のときの画面を出す）。
+  void Function()? onImpact;
   bool recording = false;
   String? error;
   DateTime? segmentStartedAt;
@@ -89,10 +95,11 @@ class DashcamService extends ChangeNotifier {
         back,
         ResolutionPreset.high,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
       );
       await c.initialize();
       controller = c;
-      await c.startVideoRecording();
+      await c.startVideoRecording(onAvailable: _frame);
       segmentStartedAt = DateTime.now();
       recording = true;
       await WakelockPlus.enable();
@@ -105,6 +112,11 @@ class DashcamService extends ChangeNotifier {
     _notify();
   }
 
+  void _frame(CameraImage img) {
+    final c = controller;
+    if (c != null) onFrame?.call(img, c.description.sensorOrientation);
+  }
+
   void _onAccel(UserAccelerometerEvent e) {
     final g = math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z) / 9.81;
     if (g < impactG) return;
@@ -115,6 +127,7 @@ class DashcamService extends ChangeNotifier {
     }
     _lastImpactAt = now;
     unawaited(protect());
+    onImpact?.call();
   }
 
   /// 直前の 1 本を保護し、録画中の 1 本も区切ったときに保護する。
@@ -140,7 +153,7 @@ class DashcamService extends ChangeNotifier {
       final started = segmentStartedAt ?? DateTime.now();
       final x = await c.stopVideoRecording();
       if (restart) {
-        await c.startVideoRecording();
+        await c.startVideoRecording(onAvailable: _frame);
         segmentStartedAt = DateTime.now();
       }
       final target = _lockCurrent ? await _dir('locked') : await _dir('loop');

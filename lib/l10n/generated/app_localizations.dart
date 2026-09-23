@@ -1249,6 +1249,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Map data © OpenStreetMap contributors'**
   String get osmCredit;
+
+  /// No description provided for @roadForwardCollision.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing in on the car ahead'**
+  String get roadForwardCollision;
+
+  /// No description provided for @roadTooClose.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re following too closely'**
+  String get roadTooClose;
+
+  /// No description provided for @roadLeadMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The car ahead has moved'**
+  String get roadLeadMoved;
+
+  /// No description provided for @roadCarBehind.
+  ///
+  /// In en, this message translates to:
+  /// **'Car coming up behind you'**
+  String get roadCarBehind;
+
+  /// No description provided for @roadSignalRed.
+  ///
+  /// In en, this message translates to:
+  /// **'The light is red'**
+  String get roadSignalRed;
+
+  /// No description provided for @roadSignalGo.
+  ///
+  /// In en, this message translates to:
+  /// **'The light is green'**
+  String get roadSignalGo;
+
+  /// No description provided for @roadSpeedCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed camera ahead'**
+  String get roadSpeedCamera;
+
+  /// No description provided for @roadOverspeed.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re over the speed limit'**
+  String get roadOverspeed;
+
+  /// No description provided for @dashcamAssist.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch the road ahead'**
+  String get dashcamAssist;
+
+  /// No description provided for @dashcamAssistNote.
+  ///
+  /// In en, this message translates to:
+  /// **'While recording, it speaks up if you close in fast on the car ahead, follow too closely, when the car ahead moves off at a light, and for speed cameras ahead (only those mapped on OpenStreetMap). Distances are rough, and it misses things at night, in rain, against the light and far away. It never controls the car.'**
+  String get dashcamAssistNote;
+
+  /// No description provided for @roadLeadInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Car ahead ~{meters} m'**
+  String roadLeadInfo(String meters);
+
+  /// No description provided for @roadNoLead.
+  ///
+  /// In en, this message translates to:
+  /// **'No car ahead'**
+  String get roadNoLead;
+
+  /// No description provided for @walkModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking mode (experimental)'**
+  String get walkModeTitle;
+
+  /// No description provided for @walkModeOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Cars behind you, reading the lights'**
+  String get walkModeOpen;
+
+  /// No description provided for @walkBehind.
+  ///
+  /// In en, this message translates to:
+  /// **'Cars behind'**
+  String get walkBehind;
+
+  /// No description provided for @walkBehindHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Wear the phone facing backward (rear camera pointing behind you) on a bag strap or in a chest pocket. It tells you by voice and vibration when a car is closing in.'**
+  String get walkBehindHelp;
+
+  /// No description provided for @walkSignal.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the light'**
+  String get walkSignal;
+
+  /// No description provided for @walkSignalHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the rear camera at the traffic light and it says whether it\'s red or green. It can get it wrong, so always check with your own eyes and ears too.'**
+  String get walkSignalHelp;
+
+  /// No description provided for @walkStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start watching'**
+  String get walkStart;
+
+  /// No description provided for @walkStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get walkStop;
+
+  /// No description provided for @signalRedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get signalRedShort;
+
+  /// No description provided for @signalGoShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get signalGoShort;
+
+  /// No description provided for @signalUnknownShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for a light'**
+  String get signalUnknownShort;
+
+  /// No description provided for @emergencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard impact detected'**
+  String get emergencyTitle;
+
+  /// No description provided for @emergencyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you hurt? Call for help if you need it. This screen never calls anyone on its own. The clips from just before and after were protected.'**
+  String get emergencyBody;
+
+  /// No description provided for @emergencyCall119.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 119 (ambulance/fire, Japan)'**
+  String get emergencyCall119;
+
+  /// No description provided for @emergencyCall110.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 110 (police, Japan)'**
+  String get emergencyCall110;
+
+  /// No description provided for @emergencyCallIntl.
+  ///
+  /// In en, this message translates to:
+  /// **'Call emergency 112'**
+  String get emergencyCallIntl;
+
+  /// No description provided for @emergencyShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Send my location'**
+  String get emergencyShare;
+
+  /// No description provided for @emergencyOk.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m OK (close)'**
+  String get emergencyOk;
+
+  /// No description provided for @emergencyShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve been in a crash. My location: {url}'**
+  String emergencyShareText(String url);
 }
 
 class _AppLocalizationsDelegate

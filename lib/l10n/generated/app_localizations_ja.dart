@@ -620,4 +620,105 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get osmCredit => '地図データ © OpenStreetMap contributors';
+
+  @override
+  String get roadForwardCollision => '前の車に近づいています';
+
+  @override
+  String get roadTooClose => '車間距離が短くなっています';
+
+  @override
+  String get roadLeadMoved => '前の車が進みました';
+
+  @override
+  String get roadCarBehind => '後ろから車が来ています';
+
+  @override
+  String get roadSignalRed => '信号は赤です';
+
+  @override
+  String get roadSignalGo => '信号は青です';
+
+  @override
+  String get roadSpeedCamera => 'この先にオービスがあります';
+
+  @override
+  String get roadOverspeed => '制限速度を超えています';
+
+  @override
+  String get dashcamAssist => '前方の見張り';
+
+  @override
+  String get dashcamAssistNote =>
+      '録画中、前の車への急な接近・短い車間距離・信号待ちで前の車が進んだこと・この先のオービス（OpenStreetMap に登録のあるものだけ）を声で知らせます。距離は目安で、夜・雨・逆光・遠い車は見逃します。車は操作しません。';
+
+  @override
+  String roadLeadInfo(String meters) {
+    return '前の車 約 ${meters}m';
+  }
+
+  @override
+  String get roadNoLead => '前の車なし';
+
+  @override
+  String get walkModeTitle => '歩行モード（試験的）';
+
+  @override
+  String get walkModeOpen => '後ろから来る車・信号を読む';
+
+  @override
+  String get walkBehind => '後ろの車';
+
+  @override
+  String get walkBehindHelp =>
+      'スマホを後ろ向き（背面カメラを後方）にして、バッグのストラップや胸ポケットに付けてください。近づいてくる車があれば、声と振動で知らせます。';
+
+  @override
+  String get walkSignal => '信号を読む';
+
+  @override
+  String get walkSignalHelp =>
+      '背面カメラを信号に向けてください。赤か青かを声で知らせます。見間違えることがあるので、必ず自分の目と耳でも確かめてください。';
+
+  @override
+  String get walkStart => '見張りを始める';
+
+  @override
+  String get walkStop => '止める';
+
+  @override
+  String get signalRedShort => '赤';
+
+  @override
+  String get signalGoShort => '青';
+
+  @override
+  String get signalUnknownShort => '信号を探しています';
+
+  @override
+  String get emergencyTitle => '強い衝撃を検知しました';
+
+  @override
+  String get emergencyBody =>
+      'けがはありませんか。必要なら通報してください。この画面から自動で通報はしません。直前と直後の映像は保護しました。';
+
+  @override
+  String get emergencyCall119 => '119 に電話（救急・消防）';
+
+  @override
+  String get emergencyCall110 => '110 に電話（警察）';
+
+  @override
+  String get emergencyCallIntl => '緊急通報 112';
+
+  @override
+  String get emergencyShare => 'いまの位置を送る';
+
+  @override
+  String get emergencyOk => '大丈夫（閉じる）';
+
+  @override
+  String emergencyShareText(String url) {
+    return '事故にあいました。いまの位置: $url';
+  }
 }

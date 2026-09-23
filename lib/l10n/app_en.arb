@@ -287,5 +287,50 @@
   "speedLimitDenied": "Location permission is off, so speed limits aren't available.",
   "speedLimitLocationOff": "Location is turned off on this device.",
   "speedLimitNetwork": "Couldn't load map data (no signal?).",
-  "osmCredit": "Map data © OpenStreetMap contributors"
+  "osmCredit": "Map data © OpenStreetMap contributors",
+  "roadForwardCollision": "Closing in on the car ahead",
+  "roadTooClose": "You're following too closely",
+  "roadLeadMoved": "The car ahead has moved",
+  "roadCarBehind": "Car coming up behind you",
+  "roadSignalRed": "The light is red",
+  "roadSignalGo": "The light is green",
+  "roadSpeedCamera": "Speed camera ahead",
+  "roadOverspeed": "You're over the speed limit",
+  "dashcamAssist": "Watch the road ahead",
+  "dashcamAssistNote": "While recording, it speaks up if you close in fast on the car ahead, follow too closely, when the car ahead moves off at a light, and for speed cameras ahead (only those mapped on OpenStreetMap). Distances are rough, and it misses things at night, in rain, against the light and far away. It never controls the car.",
+  "roadLeadInfo": "Car ahead ~{meters} m",
+  "@roadLeadInfo": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
+  "roadNoLead": "No car ahead",
+  "walkModeTitle": "Walking mode (experimental)",
+  "walkModeOpen": "Cars behind you, reading the lights",
+  "walkBehind": "Cars behind",
+  "walkBehindHelp": "Wear the phone facing backward (rear camera pointing behind you) on a bag strap or in a chest pocket. It tells you by voice and vibration when a car is closing in.",
+  "walkSignal": "Read the light",
+  "walkSignalHelp": "Point the rear camera at the traffic light and it says whether it's red or green. It can get it wrong, so always check with your own eyes and ears too.",
+  "walkStart": "Start watching",
+  "walkStop": "Stop",
+  "signalRedShort": "Red",
+  "signalGoShort": "Green",
+  "signalUnknownShort": "Looking for a light",
+  "emergencyTitle": "Hard impact detected",
+  "emergencyBody": "Are you hurt? Call for help if you need it. This screen never calls anyone on its own. The clips from just before and after were protected.",
+  "emergencyCall119": "Call 119 (ambulance/fire, Japan)",
+  "emergencyCall110": "Call 110 (police, Japan)",
+  "emergencyCallIntl": "Call emergency 112",
+  "emergencyShare": "Send my location",
+  "emergencyOk": "I'm OK (close)",
+  "emergencyShareText": "I've been in a crash. My location: {url}",
+  "@emergencyShareText": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  }
 }

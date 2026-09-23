@@ -83,6 +83,8 @@ dependencies:
   sensors_plus: ^7.1.0
   path_provider: ^2.1.6
   geolocator: ^14.0.3
+  tflite_flutter: ^0.12.1
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:
@@ -111,6 +113,8 @@ flutter:
     - assets/sfx/chime.wav
     - assets/sfx/siren.wav
     - assets/sfx/bell.wav
+    # 車・人・信号の検出（COCO SSD MobileNet v1 量子化、TensorFlow Models、Apache-2.0）
+    - assets/models/ssd_mobilenet_v1_coco.tflite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

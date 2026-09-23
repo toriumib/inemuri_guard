@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_language.dart';
 import '../screens/dashcam_screen.dart';
+import '../screens/walk_screen.dart';
 import '../services/torch.dart';
 
 /// 夜道ライト。歩く人が車に見つけてもらうための点滅（Torch.beacon）。
@@ -33,6 +34,14 @@ class WalkLightCard extends StatelessWidget {
                 ),
               ),
             ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const WalkScreen()),
+            ),
+            icon: const Icon(Icons.directions_walk),
+            label: Text(context.l10n.walkModeOpen),
+          ),
         ],
       ),
     );

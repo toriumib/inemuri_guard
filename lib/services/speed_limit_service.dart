@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'road_logic.dart';
+
 /// 制限速度の知らせ（車モード）。
 ///
 /// 道路ごとの制限速度は OpenStreetMap の maxspeed タグを Overpass API で引く。
@@ -17,10 +19,18 @@ import 'package:geolocator/geolocator.dart';
 ///
 /// 地図データ © OpenStreetMap contributors（ODbL）。画面に表記すること。
 class SpeedLimitService extends ChangeNotifier {
-  SpeedLimitService({this.onOverspeed});
+  SpeedLimitService({this.onOverspeed, this.onSpeedCamera});
 
   /// 超過を知らせる（AlarmService.warn につなぐ）。
   final void Function()? onOverspeed;
+
+  /// 進行方向の前にオービス（OSM の highway=speed_camera）が近づいた。
+  /// 同じオービスでは一度だけ。引数は距離（m）。
+  final void Function(double meters)? onSpeedCamera;
+
+  /// 前方のオービスまでの距離（m）。無ければ null。
+  double? cameraMeters;
+  final Set<String> _announcedCams = {};
 
   static const tileDeg = 0.02;
   static const matchMeters = 25.0;
@@ -39,6 +49,7 @@ class SpeedLimitService extends ChangeNotifier {
 
   final judge = OverspeedJudge();
   final Map<String, List<SpeedWay>> _tiles = {};
+  final Map<String, List<(double, double)>> _cams = {};
   final Set<String> _loading = {};
   final Map<String, DateTime> _failedAt = {};
   StreamSubscription<Position>? _sub;
@@ -48,8 +59,11 @@ class SpeedLimitService extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  bool _starting = false;
+
   Future<void> start() async {
-    if (running) return;
+    if (running || _starting) return;
+    _starting = true;
     error = null;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
@@ -76,6 +90,8 @@ class SpeedLimitService extends ChangeNotifier {
       ).listen(_onPosition, onError: (Object e) => error = '$e');
     } catch (e) {
       error = '$e';
+    } finally {
+      _starting = false;
     }
     _notify();
   }
@@ -84,7 +100,7 @@ class SpeedLimitService extends ChangeNotifier {
     running = false;
     await _sub?.cancel();
     _sub = null;
-    limit = speed = null;
+    limit = speed = cameraMeters = null;
     judge.reset();
     _notify();
   }
@@ -98,6 +114,18 @@ class SpeedLimitService extends ChangeNotifier {
       limit = null;
     } else {
       limit = nearestLimit(ways, pos.latitude, pos.longitude, matchMeters);
+      final cams = _cams[key] ?? const [];
+      final hit = cameraAhead(
+        cams,
+        pos.latitude,
+        pos.longitude,
+        pos.speed > 2 ? pos.heading : null,
+      );
+      cameraMeters = hit?.$2;
+      if (hit != null) {
+        final id = '${cams[hit.$1].$1},${cams[hit.$1].$2}';
+        if (_announcedCams.add(id)) onSpeedCamera?.call(hit.$2);
+      }
     }
     if (judge.feed(speed, limit, DateTime.now())) onOverspeed?.call();
     _notify();
@@ -118,12 +146,17 @@ class SpeedLimitService extends ChangeNotifier {
       final s = parts[0] * tileDeg, w = parts[1] * tileDeg;
       final bbox = '$s,$w,${s + tileDeg},${w + tileDeg}';
       final q =
-          '[out:json][timeout:20];way($bbox)["highway"]["maxspeed"];out tags geom;';
+          '[out:json][timeout:20];(way($bbox)["highway"]["maxspeed"];'
+          'node($bbox)["highway"="speed_camera"];);out tags geom;';
       for (final url in _servers) {
         try {
           final body = await _post(url, q);
           _tiles[key] = parseOverpass(body);
-          if (_tiles.length > 30) _tiles.remove(_tiles.keys.first);
+          _cams[key] = parseSpeedCameras(body);
+          if (_tiles.length > 30) {
+            _cams.remove(_tiles.keys.first);
+            _tiles.remove(_tiles.keys.first);
+          }
           _failedAt.remove(key);
           error = null;
           break;
@@ -187,6 +220,19 @@ class SpeedLimitService extends ChangeNotifier {
       );
     }
     return out;
+  }
+
+  /// 固定式の速度取締機（オービス）。OSM の highway=speed_camera の点。
+  /// 日本の登録は網羅的ではない（載っていないオービスは知らせられない）。
+  static List<(double, double)> parseSpeedCameras(String body) {
+    final json = jsonDecode(body) as Map<String, dynamic>;
+    return [
+      for (final e in (json['elements'] as List? ?? const []))
+        if ((e as Map)['type'] == 'node' &&
+            (e['tags'] as Map?)?['highway'] == 'speed_camera' &&
+            e['lat'] != null)
+          ((e['lat'] as num).toDouble(), (e['lon'] as num).toDouble()),
+    ];
   }
 
   /// [maxMeters] 以内でいちばん近い道路の制限速度。

@@ -649,4 +649,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get osmCredit => 'Map data © OpenStreetMap contributors';
+
+  @override
+  String get roadForwardCollision => 'Closing in on the car ahead';
+
+  @override
+  String get roadTooClose => 'You\'re following too closely';
+
+  @override
+  String get roadLeadMoved => 'The car ahead has moved';
+
+  @override
+  String get roadCarBehind => 'Car coming up behind you';
+
+  @override
+  String get roadSignalRed => 'The light is red';
+
+  @override
+  String get roadSignalGo => 'The light is green';
+
+  @override
+  String get roadSpeedCamera => 'Speed camera ahead';
+
+  @override
+  String get roadOverspeed => 'You\'re over the speed limit';
+
+  @override
+  String get dashcamAssist => 'Watch the road ahead';
+
+  @override
+  String get dashcamAssistNote =>
+      'While recording, it speaks up if you close in fast on the car ahead, follow too closely, when the car ahead moves off at a light, and for speed cameras ahead (only those mapped on OpenStreetMap). Distances are rough, and it misses things at night, in rain, against the light and far away. It never controls the car.';
+
+  @override
+  String roadLeadInfo(String meters) {
+    return 'Car ahead ~$meters m';
+  }
+
+  @override
+  String get roadNoLead => 'No car ahead';
+
+  @override
+  String get walkModeTitle => 'Walking mode (experimental)';
+
+  @override
+  String get walkModeOpen => 'Cars behind you, reading the lights';
+
+  @override
+  String get walkBehind => 'Cars behind';
+
+  @override
+  String get walkBehindHelp =>
+      'Wear the phone facing backward (rear camera pointing behind you) on a bag strap or in a chest pocket. It tells you by voice and vibration when a car is closing in.';
+
+  @override
+  String get walkSignal => 'Read the light';
+
+  @override
+  String get walkSignalHelp =>
+      'Point the rear camera at the traffic light and it says whether it\'s red or green. It can get it wrong, so always check with your own eyes and ears too.';
+
+  @override
+  String get walkStart => 'Start watching';
+
+  @override
+  String get walkStop => 'Stop';
+
+  @override
+  String get signalRedShort => 'Red';
+
+  @override
+  String get signalGoShort => 'Green';
+
+  @override
+  String get signalUnknownShort => 'Looking for a light';
+
+  @override
+  String get emergencyTitle => 'Hard impact detected';
+
+  @override
+  String get emergencyBody =>
+      'Are you hurt? Call for help if you need it. This screen never calls anyone on its own. The clips from just before and after were protected.';
+
+  @override
+  String get emergencyCall119 => 'Call 119 (ambulance/fire, Japan)';
+
+  @override
+  String get emergencyCall110 => 'Call 110 (police, Japan)';
+
+  @override
+  String get emergencyCallIntl => 'Call emergency 112';
+
+  @override
+  String get emergencyShare => 'Send my location';
+
+  @override
+  String get emergencyOk => 'I\'m OK (close)';
+
+  @override
+  String emergencyShareText(String url) {
+    return 'I\'ve been in a crash. My location: $url';
+  }
 }

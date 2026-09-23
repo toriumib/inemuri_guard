@@ -4,3 +4,8 @@ Copyright 2026 Studio Toriumi (スタジオトリウミ)
 Licensed under the Apache License, Version 2.0. See LICENSE.
 Third-party components keep their own licenses: Flutter/Dart packages
 per pubspec.lock; Google ML Kit under the Google APIs Terms of Service.
+
+assets/models/ssd_mobilenet_v1_coco.tflite: COCO SSD MobileNet v1 (quantized),
+from the TensorFlow Lite examples (TensorFlow Models), Apache License 2.0.
+Speed-limit and speed-camera data: (c) OpenStreetMap contributors, ODbL,
+fetched at runtime and not bundled.

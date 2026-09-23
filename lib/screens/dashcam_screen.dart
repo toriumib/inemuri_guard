@@ -6,8 +6,15 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../l10n/app_language.dart';
+import '../services/alarm_service.dart';
 import '../services/dashcam_service.dart';
 import '../services/drowsiness_detector.dart';
+import '../services/road_assist.dart';
+import '../services/road_logic.dart';
+import '../services/speed_limit_service.dart';
+import '../widgets/road_overlay.dart';
+import '../widgets/speed_limit_panel.dart';
+import 'emergency_screen.dart';
 
 /// ドラレコの画面。開いている間だけ録る（DashcamService の注記を参照）。
 class DashcamScreen extends StatefulWidget {
@@ -20,12 +27,44 @@ class DashcamScreen extends StatefulWidget {
 class _DashcamScreenState extends State<DashcamScreen>
     with WidgetsBindingObserver {
   final cam = DashcamService();
+  late final RoadAssist road = RoadAssist(
+    mode: RoadMode.drive,
+    say: (e) => roadEventText(context.l10n, e),
+    onAlert: (e) {
+      // 前方衝突だけは声を待たずに音と振動も（声は 1 秒かかる）。
+      if (e == RoadEvent.forwardCollision || e == RoadEvent.overspeed) {
+        context.read<AlarmService>().warn().catchError((_) {});
+      }
+    },
+  );
+  late final SpeedLimitService speed = SpeedLimitService(
+    onOverspeed: () => road.announce(RoadEvent.overspeed),
+    onSpeedCamera: (_) => road.announce(RoadEvent.speedCamera),
+  );
+  bool _emergencyOpen = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     cam.refresh();
+    cam.onFrame = (img, rot) {
+      road.speedKmh = speed.speed;
+      road.feed(img, rot);
+    };
+    cam.onImpact = _openEmergency;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) road.start(Localizations.localeOf(context).languageCode);
+    });
+  }
+
+  Future<void> _openEmergency() async {
+    if (_emergencyOpen || !mounted) return;
+    _emergencyOpen = true;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const EmergencyScreen()),
+    );
+    _emergencyOpen = false;
   }
 
   @override
@@ -39,6 +78,8 @@ class _DashcamScreenState extends State<DashcamScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     cam.dispose();
+    road.dispose();
+    speed.dispose();
     super.dispose();
   }
 
@@ -65,6 +106,13 @@ class _DashcamScreenState extends State<DashcamScreen>
                   child: Stack(
                     children: [
                       Positioned.fill(child: CameraPreview(c)),
+                      Positioned.fill(child: RoadOverlay(assist: road)),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: RoadEventBanner(assist: road),
+                      ),
                       const Positioned(
                         top: 8,
                         left: 8,
@@ -117,6 +165,12 @@ class _DashcamScreenState extends State<DashcamScreen>
                 ),
               ],
               const SizedBox(height: 12),
+              SpeedLimitPanel(service: speed, active: cam.recording),
+              if (cam.recording) _LeadInfo(assist: road),
+              const SizedBox(height: 8),
+              Text(l.dashcamAssist, style: Theme.of(context).textTheme.titleSmall),
+              Text(l.dashcamAssistNote, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
               Text(l.dashcamLimits, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 16),
               _Clips(title: l.dashcamLocked, files: cam.lockedClips, cam: cam),
@@ -125,6 +179,31 @@ class _DashcamScreenState extends State<DashcamScreen>
           );
         },
       ),
+    );
+  }
+}
+
+/// 前の車までの距離の目安。
+class _LeadInfo extends StatelessWidget {
+  const _LeadInfo({required this.assist});
+  final RoadAssist assist;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: assist,
+      builder: (context, _) {
+        final l = context.l10n;
+        final lead = assist.lead;
+        final text = assist.error ??
+            (lead == null
+                ? l.roadNoLead
+                : l.roadLeadInfo(distanceFromWidth(lead.width).round().toString()));
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text('$text · ${assist.fps.toStringAsFixed(1)} fps'),
+        );
+      },
     );
   }
 }

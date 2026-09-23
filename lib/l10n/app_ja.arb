@@ -205,5 +205,50 @@
   "speedLimitDenied": "位置の権限がないため、制限速度は使えません。",
   "speedLimitLocationOff": "端末の位置情報がオフです。",
   "speedLimitNetwork": "地図データを取得できません（圏外など）。",
-  "osmCredit": "地図データ © OpenStreetMap contributors"
+  "osmCredit": "地図データ © OpenStreetMap contributors",
+  "roadForwardCollision": "前の車に近づいています",
+  "roadTooClose": "車間距離が短くなっています",
+  "roadLeadMoved": "前の車が進みました",
+  "roadCarBehind": "後ろから車が来ています",
+  "roadSignalRed": "信号は赤です",
+  "roadSignalGo": "信号は青です",
+  "roadSpeedCamera": "この先にオービスがあります",
+  "roadOverspeed": "制限速度を超えています",
+  "dashcamAssist": "前方の見張り",
+  "dashcamAssistNote": "録画中、前の車への急な接近・短い車間距離・信号待ちで前の車が進んだこと・この先のオービス（OpenStreetMap に登録のあるものだけ）を声で知らせます。距離は目安で、夜・雨・逆光・遠い車は見逃します。車は操作しません。",
+  "roadLeadInfo": "前の車 約 {meters}m",
+  "@roadLeadInfo": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
+  "roadNoLead": "前の車なし",
+  "walkModeTitle": "歩行モード（試験的）",
+  "walkModeOpen": "後ろから来る車・信号を読む",
+  "walkBehind": "後ろの車",
+  "walkBehindHelp": "スマホを後ろ向き（背面カメラを後方）にして、バッグのストラップや胸ポケットに付けてください。近づいてくる車があれば、声と振動で知らせます。",
+  "walkSignal": "信号を読む",
+  "walkSignalHelp": "背面カメラを信号に向けてください。赤か青かを声で知らせます。見間違えることがあるので、必ず自分の目と耳でも確かめてください。",
+  "walkStart": "見張りを始める",
+  "walkStop": "止める",
+  "signalRedShort": "赤",
+  "signalGoShort": "青",
+  "signalUnknownShort": "信号を探しています",
+  "emergencyTitle": "強い衝撃を検知しました",
+  "emergencyBody": "けがはありませんか。必要なら通報してください。この画面から自動で通報はしません。直前と直後の映像は保護しました。",
+  "emergencyCall119": "119 に電話（救急・消防）",
+  "emergencyCall110": "110 に電話（警察）",
+  "emergencyCallIntl": "緊急通報 112",
+  "emergencyShare": "いまの位置を送る",
+  "emergencyOk": "大丈夫（閉じる）",
+  "emergencyShareText": "事故にあいました。いまの位置: {url}",
+  "@emergencyShareText": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  }
 }

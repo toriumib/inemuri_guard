@@ -10,22 +10,28 @@ import '../services/speed_limit_service.dart';
 import '../services/stats_service.dart';
 
 /// 制限速度と現在の速度。車モードで見張っている間だけ位置を取る。
+/// [service] を渡すと、その持ち主（ドラレコ画面）が止め時を決め、
+/// [active] が true の間だけ動く。
 class SpeedLimitPanel extends StatefulWidget {
-  const SpeedLimitPanel({super.key});
+  const SpeedLimitPanel({super.key, this.service, this.active = false});
+  final SpeedLimitService? service;
+  final bool active;
 
   @override
   State<SpeedLimitPanel> createState() => _SpeedLimitPanelState();
 }
 
 class _SpeedLimitPanelState extends State<SpeedLimitPanel> {
-  late final SpeedLimitService svc = SpeedLimitService(
-    onOverspeed: () =>
-        unawaited(context.read<AlarmService>().warn().catchError((_) {})),
-  );
+  late final SpeedLimitService svc =
+      widget.service ??
+      SpeedLimitService(
+        onOverspeed: () =>
+            unawaited(context.read<AlarmService>().warn().catchError((_) {})),
+      );
 
   @override
   void dispose() {
-    svc.dispose();
+    if (widget.service == null) svc.dispose();
     super.dispose();
   }
 
@@ -35,11 +41,14 @@ class _SpeedLimitPanelState extends State<SpeedLimitPanel> {
     final state = context.watch<DrowsinessDetector>().state;
     final watching =
         state == DetectorState.watching || state == DetectorState.alarming;
-    final want = stats.carMode && stats.speedLimitAlert && watching;
+    final want =
+        stats.speedLimitAlert &&
+        (widget.service != null ? widget.active : stats.carMode && watching);
     if (want != svc.running) {
       scheduleMicrotask(() => want ? svc.start() : svc.stop());
     }
-    if (!stats.carMode || !stats.speedLimitAlert) return const SizedBox();
+    if (!stats.speedLimitAlert) return const SizedBox();
+    if (widget.service == null && !stats.carMode) return const SizedBox();
     final l = context.l10n;
     return ListenableBuilder(
       listenable: svc,

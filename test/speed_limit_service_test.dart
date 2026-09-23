@@ -51,4 +51,16 @@ void main() {
     expect(j.feed(50, null, t0.add(const Duration(seconds: 200))), isFalse,
         reason: '制限不明では鳴らさない');
   });
+
+  test('オービスは highway=speed_camera の点だけ拾う', () {
+    const body = '''
+{"elements":[
+ {"type":"node","lat":35.1,"lon":139.1,"tags":{"highway":"speed_camera"}},
+ {"type":"node","lat":35.2,"lon":139.2,"tags":{"highway":"traffic_signals"}},
+ {"type":"way","tags":{"highway":"primary","maxspeed":"50"},
+  "geometry":[{"lat":35.0,"lon":139.0},{"lat":35.0,"lon":139.01}]}
+]}''';
+    expect(SpeedLimitService.parseSpeedCameras(body), [(35.1, 139.1)]);
+    expect(SpeedLimitService.parseOverpass(body).length, 1, reason: '点は道路に数えない');
+  });
 }
