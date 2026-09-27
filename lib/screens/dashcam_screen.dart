@@ -32,8 +32,10 @@ class _DashcamScreenState extends State<DashcamScreen>
     mode: RoadMode.drive,
     say: (e) => roadEventText(context.l10n, e),
     onAlert: (e) {
-      // 前方衝突だけは声を待たずに音と振動も（声は 1 秒かかる）。
-      if (e == RoadEvent.forwardCollision || e == RoadEvent.overspeed) {
+      // Urgent warnings also use sound and vibration without waiting for speech.
+      if (e == RoadEvent.forwardCollision ||
+          e == RoadEvent.roadUserAhead ||
+          e == RoadEvent.overspeed) {
         context.read<AlarmService>().warn().catchError((_) {});
       }
     },
@@ -88,6 +90,7 @@ class _DashcamScreenState extends State<DashcamScreen>
   Widget build(BuildContext context) {
     final l = context.l10n;
     final stats = context.watch<StatsService>();
+    road.drive.roadUserWarning = stats.roadUserWarning;
     road.drive.laneDeparture = stats.laneDepartureAlert;
     final state = context.watch<DrowsinessDetector>().state;
     final busy =
@@ -171,8 +174,22 @@ class _DashcamScreenState extends State<DashcamScreen>
               SpeedLimitPanel(service: speed, active: cam.recording),
               if (cam.recording) _LeadInfo(assist: road),
               const SizedBox(height: 8),
-              Text(l.dashcamAssist, style: Theme.of(context).textTheme.titleSmall),
-              Text(l.dashcamAssistNote, style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                l.dashcamAssist,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              Text(
+                l.dashcamAssistNote,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l.roadUserToggle),
+                subtitle: Text(l.roadUserHelp),
+                value: stats.roadUserWarning,
+                // Set up while stopped; do not change the inference ROI mid-run.
+                onChanged: cam.recording ? null : stats.setRoadUserWarning,
+              ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l.laneDepartureToggle),

@@ -771,4 +771,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get placementTitle => '使う場所';
+
+  @override
+  String get roadUserAhead => '前方の歩行者・二輪車に注意してください';
+
+  @override
+  String get roadUserToggle => '歩行者・二輪車の注意喚起（実験機能）';
+
+  @override
+  String get roadUserHelp =>
+      '初期状態はオフ。通信なしで画面全体を解析し、前方中央の歩行者・自転車・バイクを知らせます。通常の中央拡大より遠い車を見逃しやすくなります。衝突の予測ではなく、見逃し・誤報があります。録画開始前に設定してください。';
 }

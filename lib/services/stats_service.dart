@@ -45,6 +45,7 @@ class StatsService extends ChangeNotifier {
   static const _kWatchBridge = 'watch_bridge_beta';
   static const _kCarMode = 'car_mode';
   static const _kSpeedLimit = 'speed_limit_alert';
+  static const _kRoadUser = 'road_user_warning';
   static const _kLaneDeparture = 'lane_departure_alert';
   static const _kUnresponsiveCall = 'unresponsive_call';
   static const _kEmergencyContact = 'emergency_contact';
@@ -91,6 +92,9 @@ class StatsService extends ChangeNotifier {
 
   /// 車線逸脱警報（LDW）。既定 OFF: 車線維持支援は満足度がいちばん低い（うるさい）。
   bool laneDepartureAlert = false;
+
+  /// Full-frame pedestrian / cyclist / motorcyclist warning. Experimental.
+  bool roadUserWarning = false;
 
   /// ドライバー異常時対応: 反応が無いとき [emergencyContact] に電話するか。既定 OFF。
   bool unresponsiveCall = false;
@@ -172,6 +176,7 @@ class StatsService extends ChangeNotifier {
     watchBridge = prefs.getBool(_kWatchBridge) ?? true;
     carMode = prefs.getBool(_kCarMode) ?? false;
     speedLimitAlert = prefs.getBool(_kSpeedLimit) ?? true;
+    roadUserWarning = prefs.getBool(_kRoadUser) ?? false;
     laneDepartureAlert = prefs.getBool(_kLaneDeparture) ?? false;
     unresponsiveCall = prefs.getBool(_kUnresponsiveCall) ?? false;
     emergencyContact = prefs.getString(_kEmergencyContact) ?? '';
@@ -302,6 +307,13 @@ class StatsService extends ChangeNotifier {
     termsAcceptedVersion = version;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kTermsAccepted, version);
+    notifyListeners();
+  }
+
+  Future<void> setRoadUserWarning(bool value) async {
+    roadUserWarning = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kRoadUser, value);
     notifyListeners();
   }
 

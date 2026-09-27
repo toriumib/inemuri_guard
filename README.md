@@ -88,3 +88,7 @@ powershell -File tools/build-release.ps1   # Play 用 AAB（下の「公開し�
 - コードは `flutter analyze` 0 件・`flutter test` 全緑・release を実機で起動、の 3 つを PR の条件にしています
 
 手順は [CONTRIBUTING.md](CONTRIBUTING.md)、脆弱性の連絡は [SECURITY.md](SECURITY.md)。版ごとの記録は [docs/CHANGELOG.md](docs/CHANGELOG.md)。
+
+## スマホでの前方運転支援（実験機能）
+
+ドラレコに、歩行者・自転車・バイクの前方注意喚起を追加しました。既定はオフ。端末内で判定し、音・振動・日本語／英語の音声で知らせます。有効時は全画面を解析するため、通常の中央拡大より遠い車を見逃しやすくなる場合があります。自動ブレーキ・操舵や衝突予測は行いません。使い方・限界・検証手順は [スマホ運転支援](docs/smartphone-adas.md) を参照してください。

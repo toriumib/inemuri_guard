@@ -803,4 +803,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get placementTitle => 'Where you use it';
+
+  @override
+  String get roadUserAhead => 'Person or rider ahead. Pay attention.';
+
+  @override
+  String get roadUserToggle => 'Pedestrians and riders (experimental)';
+
+  @override
+  String get roadUserHelp =>
+      'Off by default. Looks across the full image for pedestrians, bicycles and motorcycles near the center ahead, without a network connection. May miss distant vehicles more often than the normal zoomed view. Not a collision prediction; misses and false alerts are possible. Change this before recording starts.';
 }
