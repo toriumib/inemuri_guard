@@ -357,5 +357,8 @@
   "laneDepartureToggle": "Lane departure warning (LDW)",
   "laneDepartureHelp": "Above 60 km/h, it tells you when you drift well off your usual position between the lines. It doesn't work on faded lines, at night, in rain or on curves. Off by default.",
   "carWatchSummary": "In the car it watches for: drowsiness (DDAW), looking away and phone use (ADDW), speed limits (ISA)",
-  "placementTitle": "Where you use it"
+  "placementTitle": "Where you use it",
+  "roadUserAhead": "Person or rider ahead. Pay attention.",
+  "roadUserToggle": "Pedestrians and riders (experimental)",
+  "roadUserHelp": "Off by default. Looks across the full image for pedestrians, bicycles and motorcycles near the center ahead, without a network connection. May miss distant vehicles more often than the normal zoomed view. Not a collision prediction; misses and false alerts are possible. Change this before recording starts."
 }

@@ -85,3 +85,7 @@ Camera frames and audio are processed on the device and never sent or recorded. 
 - Code: `flutter analyze` clean, `flutter test` green, release build started on a real device — the three conditions for a PR
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+## Experimental smartphone road assistance
+
+The dashcam now offers an opt-in warning for pedestrians, cyclists and motorcyclists ahead. Detection runs on device, with sound, vibration and Japanese/English speech. Full-frame inference may miss distant vehicles more often than the usual center crop. This is a presence warning, not collision prediction or automatic braking/steering. See [setup, limitations and validation](docs/smartphone-adas.md) (Japanese).

@@ -1,7 +1,7 @@
 // 走行動画の検出結果（tools/road_eval/detect_video.py の出力）を、
 // アプリと同じ判定（DriveJudge）で再生し、知らせの回数と 1 時間あたりの数を出す。
 //
-//   dart run tool/replay_road.dart out.jsonl [速度km/h] [--trace]
+//   dart run tool/replay_road.dart out.jsonl [速度km/h] [--trace] [--road-users]
 //
 // 速度は動画に入っていないので、一定の値を渡す（既定 40km/h）。
 // 誤報の数え方: 出た知らせを動画で見返し、本当に危なかったかを人が判定する。
@@ -17,14 +17,19 @@ RoadKind _kind(String k) => RoadKind.values.firstWhere(
 );
 
 void main(List<String> args) {
-  if (args.isEmpty) {
-    stderr.writeln('usage: dart run tool/replay_road.dart out.jsonl [speedKmh]');
+  final trace = args.contains('--trace');
+  final roadUsers = args.contains('--road-users');
+  final rest = args
+      .where((a) => a != '--trace' && a != '--road-users')
+      .toList();
+  if (rest.isEmpty) {
+    stderr.writeln(
+      'usage: dart run tool/replay_road.dart out.jsonl [speedKmh] [--road-users]',
+    );
     exit(64);
   }
-  final trace = args.contains('--trace');
-  final rest = args.where((a) => a != '--trace').toList();
   final speed = rest.length > 1 ? double.parse(rest[1]) : 40.0;
-  final judge = DriveJudge();
+  final judge = DriveJudge()..roadUserWarning = roadUsers;
   final t0 = DateTime(2026);
   final counts = <RoadEvent, int>{};
   var lastMs = 0;
@@ -56,7 +61,8 @@ void main(List<String> args) {
         'ttc=${judge.ttc?.toStringAsFixed(2) ?? '-'}',
       );
     }
-    for (final e in events) {
+    // Match RoadAssist: only the highest-priority event is announced.
+    for (final e in events.take(1)) {
       counts[e] = (counts[e] ?? 0) + 1;
       final s = ms / 1000;
       stdout.writeln(

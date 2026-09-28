@@ -6,6 +6,7 @@ import '../services/road_logic.dart';
 
 /// 知らせの文（読み上げと画面で同じ文を使う）。
 String roadEventText(AppLocalizations l, RoadEvent e) => switch (e) {
+  RoadEvent.roadUserAhead => l.roadUserAhead,
   RoadEvent.forwardCollision => l.roadForwardCollision,
   RoadEvent.tooClose => l.roadTooClose,
   RoadEvent.leadMoved => l.roadLeadMoved,
@@ -48,7 +49,9 @@ class _BoxPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = isFocus ? 4 : 1.5
         ..color = switch (o.kind) {
-          RoadKind.person || RoadKind.bicycle => Colors.orangeAccent,
+          RoadKind.person ||
+          RoadKind.bicycle ||
+          RoadKind.motorcycle => Colors.orangeAccent,
           RoadKind.trafficLight => Colors.lightGreenAccent,
           _ => isFocus ? Colors.redAccent : Colors.white70,
         };
@@ -86,7 +89,9 @@ class RoadEventBanner extends StatelessWidget {
           return const SizedBox();
         }
         final urgent =
-            e == RoadEvent.forwardCollision || e == RoadEvent.carBehind;
+            e == RoadEvent.forwardCollision ||
+            e == RoadEvent.roadUserAhead ||
+            e == RoadEvent.carBehind;
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),

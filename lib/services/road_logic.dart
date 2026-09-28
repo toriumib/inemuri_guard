@@ -361,9 +361,101 @@ double bearing(double lat1, double lon1, double lat2, double lon2) {
   return best;
 }
 
+/// Experimental presence warning, not a collision prediction. Coordinates are
+/// in the full upright frame. No lane markings, map or metric distance required.
+/// Require the same visible road user for >= 500ms and >= 3 observations;
+/// gaps, turns, invalid input and target changes discard the confirmation.
+class RoadUserJudge {
+  static const hold = Duration(milliseconds: 500);
+  static const maxGap = Duration(milliseconds: 750);
+  static const cooldown = Duration(seconds: 8);
+  RoadObject? _target;
+  DateTime? _since, _previousAt, _lastAlert;
+  int _samples = 0;
+
+  void reset() {
+    _target = null;
+    _since = _previousAt = _lastAlert = null;
+    _samples = 0;
+  }
+
+  bool feed({
+    required List<RoadObject> objects,
+    required DateTime now,
+    double? speedKmh,
+    bool turning = false,
+  }) {
+    final gap = _previousAt == null ? null : now.difference(_previousAt!);
+    if (gap != null && gap <= Duration.zero) {
+      reset();
+      return false;
+    }
+    if (gap != null && gap > maxGap) {
+      _target = null;
+      _since = null;
+      _samples = 0;
+    }
+    _previousAt = now;
+    // Unknown speed permits a presence warning; never infer standstill from it.
+    final suppressed =
+        turning || (speedKmh != null && (!speedKmh.isFinite || speedKmh < 5));
+    final candidates = suppressed
+        ? <RoadObject>[]
+        : objects.where((o) {
+            final relevant =
+                o.kind == RoadKind.person ||
+                o.kind == RoadKind.bicycle ||
+                o.kind == RoadKind.motorcycle;
+            final valid = [
+              o.score,
+              o.left,
+              o.top,
+              o.right,
+              o.bottom,
+            ].every((v) => v.isFinite && v >= 0 && v <= 1);
+            return relevant &&
+                valid &&
+                o.score >= 0.6 &&
+                o.width > 0 &&
+                o.height >= 0.18 &&
+                o.cx >= 0.35 &&
+                o.cx <= 0.65 &&
+                o.bottom >= 0.6;
+          }).toList();
+    RoadObject? next;
+    var overlap = 0.2;
+    if (_target != null) {
+      for (final o in candidates) {
+        final match = iou(o, _target!);
+        if (o.kind == _target!.kind && match > overlap) {
+          next = o;
+          overlap = match;
+        }
+      }
+    }
+    if (next == null) {
+      for (final o in candidates) {
+        if (next == null || o.area > next.area) next = o;
+      }
+      _since = next == null ? null : now;
+      _samples = 0;
+    }
+    _target = next;
+    if (next == null) return false;
+    _samples++;
+    if (_samples < 3 || now.difference(_since!) < hold) return false;
+    if (_lastAlert != null && now.difference(_lastAlert!) < cooldown) {
+      return false;
+    }
+    _lastAlert = now;
+    return true;
+  }
+}
+
 /// 知らせの種類。
 enum RoadEvent {
   forwardCollision,
+  roadUserAhead,
   tooClose,
   leadMoved,
   laneDeparture,
@@ -384,6 +476,10 @@ class DriveJudge {
   final headway = HeadwayJudge();
   final launch = LaunchJudge();
   final ldw = LdwJudge();
+  final roadUser = RoadUserJudge();
+
+  /// Opt in after choosing full-frame inference (experimental).
+  bool roadUserWarning = false;
 
   /// 車線逸脱を見るか（既定 OFF。車線維持支援は満足度がいちばん低い＝うるさい）。
   bool laneDeparture = false;
@@ -409,6 +505,18 @@ class DriveJudge {
     if (l != null &&
         fcw.feed(ttc: ttc, width: l.width, speedKmh: speedKmh, turning: turning, now: now)) {
       out.add(RoadEvent.forwardCollision);
+    }
+    if (roadUserWarning) {
+      if (roadUser.feed(
+        objects: objects,
+        now: now,
+        speedKmh: speedKmh,
+        turning: turning,
+      )) {
+        out.add(RoadEvent.roadUserAhead);
+      }
+    } else {
+      roadUser.reset();
     }
     if (headway.feed(width: l?.width, speedKmh: speedKmh, now: now)) {
       out.add(RoadEvent.tooClose);

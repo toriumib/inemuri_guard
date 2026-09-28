@@ -1525,6 +1525,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Where you use it'**
   String get placementTitle;
+
+  /// No description provided for @roadUserAhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Person or rider ahead. Pay attention.'**
+  String get roadUserAhead;
+
+  /// No description provided for @roadUserToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pedestrians and riders (experimental)'**
+  String get roadUserToggle;
+
+  /// No description provided for @roadUserHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Off by default. Looks across the full image for pedestrians, bicycles and motorcycles near the center ahead, without a network connection. May miss distant vehicles more often than the normal zoomed view. Not a collision prediction; misses and false alerts are possible. Change this before recording starts.'**
+  String get roadUserHelp;
 }
 
 class _AppLocalizationsDelegate

@@ -118,7 +118,7 @@ class RoadAssist extends ChangeNotifier {
       objects = await _det.detect(
         img,
         rot,
-        roi: driving ? RoadRoi.center : RoadRoi.full,
+        roi: driving && !drive.roadUserWarning ? RoadRoi.center : RoadRoi.full,
       );
       // 車線の白線は画面の下の両端にあるので、切り出す前の全体で見る（推論はしない）。
       _laneRgb = driving && drive.laneDeparture ? _det.fullFrame(img, rot, _laneSize) : null;
@@ -145,9 +145,9 @@ class RoadAssist extends ChangeNotifier {
         );
         lead = drive.lead;
         ttc = drive.ttc;
-        for (final e in events) {
-          _emit(e, now);
-        }
+        // DriveJudge orders collision / road-user warnings before advisories.
+        // Speak one message so a launch or headway notice cannot replace it.
+        if (events.isNotEmpty) _emit(events.first, now);
       case RoadMode.walkBehind:
         final v = pickLargestVehicle(objects);
         lead = v;
